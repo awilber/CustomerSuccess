@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+
+{% block title %}Google Drive Setup - CustomerSuccess{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto">
+    <h1 class="text-2xl font-bold text-gray-900 mb-6">Google Drive Setup</h1>
+    
+    <div class="bg-white shadow rounded-lg p-6 mb-6">
+        <h2 class="text-lg font-medium text-gray-900 mb-4">Setup Instructions</h2>
+        
+        <div class="space-y-4">
+            <!-- Step 1: Credentials -->
+            <div class="border rounded-lg p-4">
+                <div class="flex items-start">
+                    <div class="flex-shrink-0">
+                        {% if creds_exists %}
+                            <svg class="h-6 w-6 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                            </svg>
+                        {% else %}
+                            <span class="text-red-500 font-bold">1</span>
+                        {% endif %}
+                    </div>
+                    <div class="ml-3">
+                        <h3 class="text-sm font-medium text-gray-900">Google Cloud Credentials</h3>
+                        {% if creds_exists %}
+                            <p class="text-sm text-green-600">✓ credentials.json found</p>
+                        {% else %}
+                            <p class="text-sm text-gray-500 mt-1">Download OAuth 2.0 credentials from Google Cloud Console:</p>
+                            <ol class="mt-2 text-sm text-gray-500 list-decimal list-inside space-y-1">
+                                <li>Go to <a href="https://console.cloud.google.com/apis/credentials" target="_blank" class="text-indigo-600 hover:text-indigo-500">Google Cloud Console</a></li>
+                                <li>Create a new OAuth 2.0 Client ID (Desktop application)</li>
+                                <li>Download the credentials</li>
+                                <li>Save as <code class="bg-gray-100 px-1 rounded">credentials.json</code> in the project root</li>
+                            </ol>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Step 2: Authentication -->
+            <div class="border rounded-lg p-4">
+                <div class="flex items-start">
+                    <div class="flex-shrink-0">
+                        {% if token_exists %}
+                            <svg class="h-6 w-6 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                            </svg>
+                        {% else %}
+                            <span class="text-red-500 font-bold">2</span>
+                        {% endif %}
+                    </div>
+                    <div class="ml-3">
+                        <h3 class="text-sm font-medium text-gray-900">Authentication</h3>
+                        {% if token_exists %}
+                            <p class="text-sm text-green-600">✓ Authenticated</p>
+                            <a href="{{ url_for('drive.authenticate') }}" 
+                               class="mt-2 inline-flex items-center px-3 py-1 border border-gray-300 text-xs font-medium rounded text-gray-700 bg-white hover:bg-gray-50">
+                                Re-authenticate
+                            </a>
+                        {% else %}
+                            <p class="text-sm text-gray-500 mt-1">Authenticate with Google Drive</p>
+                            {% if creds_exists %}
+                                <a href="{{ url_for('drive.authenticate') }}" 
+                                   class="mt-2 inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700">
+                                    Authenticate Now
+                                </a>
+                            {% else %}
+                                <p class="text-sm text-gray-400 mt-1">Complete step 1 first</p>
+                            {% endif %}
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Step 3: Usage -->
+            <div class="border rounded-lg p-4">
+                <div class="flex items-start">
+                    <div class="flex-shrink-0">
+                        <span class="text-gray-500 font-bold">3</span>
+                    </div>
+                    <div class="ml-3">
+                        <h3 class="text-sm font-medium text-gray-900">Usage</h3>
+                        <p class="text-sm text-gray-500 mt-1">
+                            Once authenticated, you can browse and link Google Drive files from any customer's detail page.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- API Scopes Info -->
+    <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <h3 class="text-sm font-medium text-blue-900">Required Permissions</h3>
+        <p class="text-sm text-blue-700 mt-1">
+            This app requests read-only access to your Google Drive files. It can:
+        </p>
+        <ul class="mt-2 text-sm text-blue-700 list-disc list-inside">
+            <li>View and list files in your shared drives</li>
+            <li>Read file metadata (name, size, modified date)</li>
+        </ul>
+        <p class="text-sm text-blue-700 mt-2">
+            It cannot modify, delete, or download your files.
+        </p>
+    </div>
+</div>
+{% endblock %}

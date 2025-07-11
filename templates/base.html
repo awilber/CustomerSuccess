@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}CustomerSuccess{% endblock %}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+    <style>
+        [x-cloak] { display: none !important; }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <nav class="bg-white shadow-sm border-b">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex">
+                    <div class="flex-shrink-0 flex items-center">
+                        <a href="{{ url_for('index') }}" class="text-xl font-bold text-gray-900">
+                            CustomerSuccess
+                        </a>
+                    </div>
+                    <div class="hidden sm:ml-6 sm:flex sm:space-x-8">
+                        <a href="{{ url_for('index') }}" 
+                           class="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
+                            Dashboard
+                        </a>
+                        <a href="{{ url_for('customers.list') }}" 
+                           class="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
+                            Customers
+                        </a>
+                        <a href="{{ url_for('drive.setup') }}" 
+                           class="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
+                            Google Drive
+                        </a>
+                    </div>
+                </div>
+                <div class="flex items-center">
+                    <a href="{{ url_for('init_db') }}" 
+                       class="text-sm text-gray-500 hover:text-gray-700">
+                        Initialize DB
+                    </a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="mb-4 rounded-md p-4 
+                        {% if category == 'error' %}bg-red-50 text-red-800
+                        {% elif category == 'success' %}bg-green-50 text-green-800
+                        {% else %}bg-blue-50 text-blue-800{% endif %}">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Console Log Panel (temporarily disabled) -->
+    <!--
+    <div id="consolePanel" x-data="consoleLog()" x-init="init()" 
+         class="fixed bottom-0 left-0 right-0 bg-gray-900 text-white shadow-2xl transition-all duration-300"
+         :class="collapsed ? 'h-8' : 'h-64'">
+        
+        <!-- Status Bar -->
+        <div class="flex items-center justify-between px-4 h-8 bg-gray-800 cursor-pointer" @click="toggle()">
+            <div class="flex items-center space-x-4 text-xs">
+                <span class="font-medium">Console</span>
+                <span x-show="collapsed" class="flex items-center space-x-2">
+                    <span class="flex items-center" x-show="counts.ERROR > 0">
+                        <span class="w-2 h-2 bg-red-500 rounded-full mr-1"></span>
+                        <span x-text="counts.ERROR" class="text-red-400"></span>
+                    </span>
+                    <span class="flex items-center" x-show="counts.WARNING > 0">
+                        <span class="w-2 h-2 bg-yellow-500 rounded-full mr-1"></span>
+                        <span x-text="counts.WARNING" class="text-yellow-400"></span>
+                    </span>
+                    <span class="flex items-center">
+                        <span class="w-2 h-2 bg-blue-500 rounded-full mr-1"></span>
+                        <span x-text="counts.INFO" class="text-blue-400"></span>
+                    </span>
+                </span>
+            </div>
+            <div class="flex items-center space-x-2">
+                <button @click.stop="clearLogs()" class="text-xs hover:text-gray-300">Clear</button>
+                <svg class="w-4 h-4 transform transition-transform" :class="collapsed ? '' : 'rotate-180'"
+                     fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                </svg>
+            </div>
+        </div>
+        
+        <!-- Log Content -->
+        <div x-show="!collapsed" class="h-56 overflow-hidden flex flex-col">
+            <!-- Filters -->
+            <div class="flex items-center space-x-2 px-4 py-1 bg-gray-800 text-xs">
+                <button @click="setFilter('ALL')" 
+                        :class="filter === 'ALL' ? 'bg-gray-700' : 'hover:bg-gray-700'"
+                        class="px-2 py-1 rounded">All</button>
+                <button @click="setFilter('ERROR')" 
+                        :class="filter === 'ERROR' ? 'bg-red-800' : 'hover:bg-gray-700'"
+                        class="px-2 py-1 rounded text-red-400">Errors</button>
+                <button @click="setFilter('WARNING')" 
+                        :class="filter === 'WARNING' ? 'bg-yellow-800' : 'hover:bg-gray-700'"
+                        class="px-2 py-1 rounded text-yellow-400">Warnings</button>
+                <button @click="setFilter('INFO')" 
+                        :class="filter === 'INFO' ? 'bg-blue-800' : 'hover:bg-gray-700'"
+                        class="px-2 py-1 rounded text-blue-400">Info</button>
+                <button @click="setFilter('DEBUG')" 
+                        :class="filter === 'DEBUG' ? 'bg-gray-700' : 'hover:bg-gray-700'"
+                        class="px-2 py-1 rounded text-gray-400">Debug</button>
+            </div>
+            
+            <!-- Log Lines -->
+            <div class="flex-1 overflow-y-auto px-4 py-2 font-mono text-xs" id="logContainer">
+                <template x-for="log in filteredLogs" :key="log.timestamp">
+                    <div class="py-0.5" 
+                         :class="{
+                             'text-red-400': log.level === 'ERROR',
+                             'text-yellow-400': log.level === 'WARNING',
+                             'text-blue-400': log.level === 'INFO',
+                             'text-gray-400': log.level === 'DEBUG'
+                         }">
+                        <span class="text-gray-500" x-text="formatTime(log.timestamp)"></span>
+                        <span class="font-bold" x-text="'[' + log.level + ']'"></span>
+                        <span x-text="log.message"></span>
+                    </div>
+                </template>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global JavaScript utilities
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
+        }
+        
+        // Console Log Component
+        function consoleLog() {
+            return {
+                collapsed: true,
+                logs: [],
+                filter: 'ALL',
+                counts: {ERROR: 0, WARNING: 0, INFO: 0, DEBUG: 0},
+                eventSource: null,
+                
+                init() {
+                    // Load initial logs
+                    this.loadHistory();
+                    
+                    // Connect to SSE stream
+                    this.eventSource = new EventSource('/logs/stream');
+                    this.eventSource.onmessage = (event) => {
+                        const log = JSON.parse(event.data);
+                        this.addLog(log);
+                    };
+                },
+                
+                toggle() {
+                    this.collapsed = !this.collapsed;
+                },
+                
+                setFilter(level) {
+                    this.filter = level;
+                },
+                
+                get filteredLogs() {
+                    if (this.filter === 'ALL') return this.logs;
+                    return this.logs.filter(log => log.level === this.filter);
+                },
+                
+                addLog(log) {
+                    this.logs.push(log);
+                    if (this.logs.length > 1000) {
+                        this.logs.shift();
+                    }
+                    this.updateCounts();
+                    
+                    // Auto-scroll to bottom
+                    this.$nextTick(() => {
+                        const container = document.getElementById('logContainer');
+                        if (container) {
+                            container.scrollTop = container.scrollHeight;
+                        }
+                    });
+                },
+                
+                updateCounts() {
+                    this.counts = {ERROR: 0, WARNING: 0, INFO: 0, DEBUG: 0};
+                    this.logs.forEach(log => {
+                        if (this.counts[log.level] !== undefined) {
+                            this.counts[log.level]++;
+                        }
+                    });
+                },
+                
+                async loadHistory() {
+                    const response = await fetch('/logs/history?limit=100');
+                    const logs = await response.json();
+                    this.logs = logs;
+                    this.updateCounts();
+                },
+                
+                async clearLogs() {
+                    await fetch('/logs/clear', {method: 'POST'});
+                    this.logs = [];
+                    this.updateCounts();
+                },
+                
+                formatTime(timestamp) {
+                    const date = new Date(timestamp);
+                    return date.toTimeString().split(' ')[0];
+                }
+            }
+        }
+    </script>
+    -->
+    {% block scripts %}{% endblock %}
+</body>
+</html>

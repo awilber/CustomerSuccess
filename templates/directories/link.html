@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+
+{% block title %}Link Directory - {{ customer.name }} - CustomerSuccess{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto">
+    <h1 class="text-2xl font-bold text-gray-900 mb-6">Link Directory - {{ customer.name }}</h1>
+    
+    <div class="bg-white shadow rounded-lg p-6">
+        <form method="POST" x-data="{ 
+            directoryPath: '', 
+            checking: false, 
+            stats: null,
+            checkDirectory() {
+                if (!this.directoryPath) {
+                    this.stats = null;
+                    return;
+                }
+                
+                this.checking = true;
+                fetch('/directories/api/check-directory', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({path: this.directoryPath})
+                })
+                .then(r => r.json())
+                .then(data => {
+                    this.stats = data;
+                    this.checking = false;
+                });
+            }
+        }">
+            <div class="space-y-4">
+                <div>
+                    <label for="directory_path" class="block text-sm font-medium text-gray-700">
+                        Directory Path
+                    </label>
+                    <input type="text" 
+                           name="directory_path" 
+                           id="directory_path"
+                           x-model="directoryPath"
+                           @blur="checkDirectory()"
+                           required
+                           class="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
+                           placeholder="/path/to/directory or ~/Documents/ProjectFiles">
+                    <p class="mt-1 text-sm text-gray-500">
+                        Enter the full path to the directory you want to link
+                    </p>
+                </div>
+                
+                <!-- Directory Stats -->
+                <div x-show="stats" x-cloak class="rounded-md p-4"
+                     :class="stats?.exists && stats?.is_directory && stats?.readable ? 'bg-green-50' : 'bg-red-50'">
+                    <div x-show="stats?.exists && stats?.is_directory && stats?.readable">
+                        <p class="text-sm font-medium text-green-800">✓ Directory found</p>
+                        <p class="text-sm text-green-700 mt-1">
+                            <span x-text="stats.file_count"></span> files • 
+                            <span x-text="(stats.total_size / 1024 / 1024).toFixed(2)"></span> MB
+                        </p>
+                        <div x-show="stats.subdirs.length > 0" class="mt-2">
+                            <p class="text-sm text-green-700">Subdirectories:</p>
+                            <ul class="text-sm text-green-600 ml-4">
+                                <template x-for="subdir in stats.subdirs.slice(0, 5)">
+                                    <li>• <span x-text="subdir"></span></li>
+                                </template>
+                                <li x-show="stats.subdirs.length > 5" class="text-green-500">
+                                    ... and <span x-text="stats.subdirs.length - 5"></span> more
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <div x-show="!stats?.exists">
+                        <p class="text-sm font-medium text-red-800">✗ Directory not found</p>
+                    </div>
+                    
+                    <div x-show="stats?.exists && !stats?.is_directory">
+                        <p class="text-sm font-medium text-red-800">✗ Path is not a directory</p>
+                    </div>
+                    
+                    <div x-show="stats?.exists && stats?.is_directory && !stats?.readable">
+                        <p class="text-sm font-medium text-red-800">✗ Directory is not readable</p>
+                    </div>
+                </div>
+                
+                <div class="pt-4">
+                    <button type="submit"
+                            :disabled="!stats || !stats.exists || !stats.is_directory || !stats.readable"
+                            class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50">
+                        Link Directory
+                    </button>
+                    <a href="{{ url_for('directories.customer_directories', customer_id=customer.id) }}"
+                       class="ml-3 inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                        Cancel
+                    </a>
+                </div>
+            </div>
+        </form>
+        
+        <div class="mt-6 border-t pt-6">
+            <h3 class="text-sm font-medium text-gray-900 mb-2">What happens next?</h3>
+            <ul class="text-sm text-gray-600 space-y-1">
+                <li>• The directory will be scanned in the background</li>
+                <li>• Files will be analyzed and indexed</li>
+                <li>• Content will be correlated with email communications</li>
+                <li>• You can view analysis results in the File Analysis dashboard</li>
+            </ul>
+        </div>
+    </div>
+</div>
+{% endblock %}

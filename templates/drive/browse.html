@@ -1,0 +1,174 @@
+{% extends "base.html" %}
+
+{% block title %}Browse Google Drive - {{ customer.name }} - CustomerSuccess{% endblock %}
+
+{% block content %}
+<div class="mb-6">
+    <h1 class="text-2xl font-bold text-gray-900">Browse Google Drive</h1>
+    <p class="text-gray-500">Link files for {{ customer.name }}</p>
+</div>
+
+<!-- Breadcrumb -->
+<nav class="flex mb-4" aria-label="Breadcrumb">
+    <ol class="inline-flex items-center space-x-1 md:space-x-3">
+        <li class="inline-flex items-center">
+            <a href="{{ url_for('customers.detail', id=customer.id) }}" 
+               class="text-gray-700 hover:text-gray-900">
+                {{ customer.name }}
+            </a>
+        </li>
+        <li>
+            <div class="flex items-center">
+                <svg class="w-6 h-6 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"></path>
+                </svg>
+                <a href="{{ url_for('drive.browse', customer_id=customer.id) }}" 
+                   class="ml-1 text-gray-700 hover:text-gray-900">
+                    Shared Drives
+                </a>
+            </div>
+        </li>
+        {% if current_location.type == 'drive' %}
+            <li>
+                <div class="flex items-center">
+                    <svg class="w-6 h-6 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"></path>
+                    </svg>
+                    <span class="ml-1 text-gray-500">{{ current_location.name }}</span>
+                </div>
+            </li>
+        {% elif current_location.type == 'folder' %}
+            <li>
+                <div class="flex items-center">
+                    <svg class="w-6 h-6 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"></path>
+                    </svg>
+                    <a href="{{ url_for('drive.browse', customer_id=customer.id, drive_id=current_location.drive_id) }}" 
+                       class="ml-1 text-gray-700 hover:text-gray-900">
+                        {{ current_location.drive_name }}
+                    </a>
+                </div>
+            </li>
+            <li>
+                <div class="flex items-center">
+                    <svg class="w-6 h-6 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"></path>
+                    </svg>
+                    <span class="ml-1 text-gray-500">{{ current_location.name }}</span>
+                </div>
+            </li>
+        {% endif %}
+    </ol>
+</nav>
+
+<!-- Content -->
+<div class="bg-white shadow rounded-lg">
+    {% if not drive_id %}
+        <!-- List Shared Drives -->
+        <div class="px-4 py-5 sm:p-6">
+            <h3 class="text-lg font-medium text-gray-900 mb-4">Select a Shared Drive</h3>
+            
+            {% if shared_drives %}
+                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    {% for drive in shared_drives %}
+                        <a href="{{ url_for('drive.browse', customer_id=customer.id, drive_id=drive.id) }}"
+                           class="border rounded-lg p-4 hover:bg-gray-50 flex items-center">
+                            <svg class="h-8 w-8 text-gray-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path>
+                            </svg>
+                            <span class="text-sm font-medium text-gray-900">{{ drive.name }}</span>
+                        </a>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <p class="text-gray-500">No shared drives found.</p>
+            {% endif %}
+        </div>
+    {% else %}
+        <!-- List Files in Drive/Folder -->
+        <div class="px-4 py-5 sm:p-6">
+            <!-- Link Directory Button -->
+            <div class="mb-4 flex justify-end">
+                <form action="{{ url_for('directories.link_drive_directory', customer_id=customer.id) }}" 
+                      method="POST" class="inline">
+                    <input type="hidden" name="drive_id" value="{{ drive_id }}">
+                    <input type="hidden" name="folder_id" value="{{ folder_id }}">
+                    <input type="hidden" name="folder_name" value="{{ current_location.name }}">
+                    <button type="submit"
+                            class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700">
+                        <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                        </svg>
+                        Link This Directory
+                    </button>
+                </form>
+            </div>
+            
+            {% if files %}
+                <div class="overflow-hidden shadow ring-1 ring-black ring-opacity-5 md:rounded-lg">
+                    <table class="min-w-full divide-y divide-gray-300">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Modified</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
+                            {% for file in files %}
+                                <tr class="hover:bg-gray-50">
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                        {% if file.mimeType == 'application/vnd.google-apps.folder' %}
+                                            <a href="{{ url_for('drive.browse', customer_id=customer.id, drive_id=drive_id, folder_id=file.id) }}"
+                                               class="text-indigo-600 hover:text-indigo-900 flex items-center">
+                                                <svg class="h-5 w-5 mr-2 text-yellow-500" fill="currentColor" viewBox="0 0 20 20">
+                                                    <path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z"></path>
+                                                </svg>
+                                                {{ file.name }}
+                                            </a>
+                                        {% else %}
+                                            <div class="flex items-center">
+                                                <svg class="h-5 w-5 mr-2 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                                                    <path fill-rule="evenodd" d="M4 4a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-5L9 2H4z" clip-rule="evenodd"></path>
+                                                </svg>
+                                                {{ file.name }}
+                                            </div>
+                                        {% endif %}
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                        {{ file.mimeType.split('.')[-1] if '.' in file.mimeType else 'file' }}
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                        {{ file.modifiedTime[:10] if file.modifiedTime else '' }}
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                        {% if file.mimeType != 'application/vnd.google-apps.folder' %}
+                                            <form action="{{ url_for('drive.link_file', customer_id=customer.id) }}" 
+                                                  method="POST" class="inline">
+                                                <input type="hidden" name="file_id" value="{{ file.id }}">
+                                                <button type="submit"
+                                                        class="text-indigo-600 hover:text-indigo-900">
+                                                    Link File
+                                                </button>
+                                            </form>
+                                            {% if file.webViewLink %}
+                                                <a href="{{ file.webViewLink }}" target="_blank"
+                                                   class="ml-3 text-gray-600 hover:text-gray-900">
+                                                    View
+                                                </a>
+                                            {% endif %}
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <p class="text-gray-500">No files found in this location.</p>
+            {% endif %}
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,229 @@
+{% extends "base.html" %}
+
+{% block title %}Timeline - {{ customer.name }} - CustomerSuccess{% endblock %}
+
+{% block content %}
+<div x-data="timelineApp()">
+    <div class="mb-6">
+        <h1 class="text-2xl font-bold text-gray-900">Communication Timeline - {{ customer.name }}</h1>
+        <p class="text-gray-500">Visual timeline of all email communications</p>
+    </div>
+
+    <!-- Filters -->
+    <div class="bg-white shadow rounded-lg p-6 mb-6">
+        <h3 class="text-lg font-medium text-gray-900 mb-4">Filters</h3>
+        
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <div>
+                <label class="block text-sm font-medium text-gray-700">Person</label>
+                <select x-model="filters.person" @change="updateTimeline()"
+                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                    <option value="">All People</option>
+                    {% for person in people %}
+                        <option value="{{ person.name }}">{{ person.name }} ({{ person.side }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div>
+                <label class="block text-sm font-medium text-gray-700">Start Date</label>
+                <input type="date" x-model="filters.startDate" @change="updateTimeline()"
+                       class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+            </div>
+            
+            <div>
+                <label class="block text-sm font-medium text-gray-700">End Date</label>
+                <input type="date" x-model="filters.endDate" @change="updateTimeline()"
+                       class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+            </div>
+        </div>
+    </div>
+
+    <!-- Timeline Visualization -->
+    <div class="bg-white shadow rounded-lg p-6">
+        <div id="timeline" style="height: 600px;"></div>
+    </div>
+
+    <!-- Legend -->
+    <div class="mt-6 bg-white shadow rounded-lg p-6">
+        <h3 class="text-lg font-medium text-gray-900 mb-4">Legend</h3>
+        <div class="flex space-x-6">
+            <div class="flex items-center">
+                <div class="w-4 h-4 bg-blue-500 rounded-full mr-2"></div>
+                <span class="text-sm text-gray-700">Our Team</span>
+            </div>
+            <div class="flex items-center">
+                <div class="w-4 h-4 bg-green-500 rounded-full mr-2"></div>
+                <span class="text-sm text-gray-700">Customer Team</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function timelineApp() {
+    return {
+        filters: {
+            person: '',
+            startDate: '',
+            endDate: ''
+        },
+        
+        init() {
+            this.updateTimeline();
+        },
+        
+        async updateTimeline() {
+            const params = new URLSearchParams({
+                person: this.filters.person,
+                start_date: this.filters.startDate,
+                end_date: this.filters.endDate
+            });
+            
+            const response = await fetch(`/analytics/api/timeline/{{ customer.id }}?${params}`);
+            const data = await response.json();
+            
+            this.renderTimeline(data);
+        },
+        
+        renderTimeline(data) {
+            if (!data.time_bins || data.time_bins.length === 0) {
+                Plotly.newPlot('timeline', [], {
+                    title: 'No email data found',
+                    height: 600
+                });
+                return;
+            }
+            
+            const traces = [];
+            const colors = {
+                // Customer colors (green shades)
+                customer: ['#059669', '#10B981', '#34D399', '#6EE7B7', '#A7F3D0'],
+                // Our team colors (blue shades)
+                us: ['#1E40AF', '#2563EB', '#3B82F6', '#60A5FA', '#93C5FD']
+            };
+            
+            // Create stacked area chart for customer emails
+            let customerY = new Array(data.time_bins.length).fill(0);
+            data.customer_senders.forEach((sender, idx) => {
+                const y = data.time_bins.map(bin => {
+                    return data.volume_data[bin]?.customer[sender] || 0;
+                });
+                
+                // Add to cumulative for stacking
+                const stackedY = y.map((val, i) => {
+                    const newVal = customerY[i] + val;
+                    customerY[i] = newVal;
+                    return newVal;
+                });
+                
+                traces.push({
+                    x: data.time_bins,
+                    y: stackedY,
+                    name: sender,
+                    type: 'scatter',
+                    mode: 'lines',
+                    line: {
+                        width: 0,
+                        color: colors.customer[idx % colors.customer.length]
+                    },
+                    fill: idx === 0 ? 'tozeroy' : 'tonexty',
+                    fillcolor: colors.customer[idx % colors.customer.length] + '40', // 40 = alpha
+                    stackgroup: 'customer',
+                    legendgroup: 'customer',
+                    hovertemplate: sender + ': %{y}<extra></extra>'
+                });
+            });
+            
+            // Create scatter points for individual US team emails
+            const usColors = {};
+            data.us_senders.forEach((sender, idx) => {
+                usColors[sender] = colors.us[idx % colors.us.length];
+            });
+            
+            // Group emails by sender for scatter plots
+            const usSenderEmails = {};
+            data.individual_emails.forEach(email => {
+                if (!usSenderEmails[email.sender]) {
+                    usSenderEmails[email.sender] = [];
+                }
+                usSenderEmails[email.sender].push(email);
+            });
+            
+            // Add scatter plots for each US sender
+            Object.entries(usSenderEmails).forEach(([sender, emails]) => {
+                // Calculate y position based on volume in that time bin
+                const x = [];
+                const y = [];
+                const text = [];
+                
+                emails.forEach(email => {
+                    const binData = data.volume_data[email.time_bin];
+                    const customerTotal = binData?.total_customer || 0;
+                    const usCount = Object.entries(binData?.us || {})
+                        .filter(([s, _]) => s < sender)
+                        .reduce((sum, [_, count]) => sum + count, 0);
+                    
+                    x.push(email.date);
+                    y.push(customerTotal + usCount + 0.5); // Position above customer stack
+                    text.push(`${sender}<br>${email.subject}<br>${email.preview}`);
+                });
+                
+                traces.push({
+                    x: x,
+                    y: y,
+                    name: sender,
+                    type: 'scatter',
+                    mode: 'markers',
+                    marker: {
+                        size: 8,
+                        color: usColors[sender],
+                        line: {
+                            color: 'white',
+                            width: 1
+                        }
+                    },
+                    legendgroup: 'us',
+                    text: text,
+                    hovertemplate: '%{text}<extra></extra>'
+                });
+            });
+            
+            // Determine appropriate date format based on bin type
+            let tickformat;
+            switch(data.bin_type) {
+                case 'day': tickformat = '%Y-%m-%d'; break;
+                case 'week': tickformat = '%Y-W%U'; break;
+                case 'month': tickformat = '%Y-%m'; break;
+                case 'quarter': tickformat = '%Y-Q'; break;
+                default: tickformat = '%Y-%m-%d';
+            }
+            
+            const layout = {
+                title: 'Email Communication Volume Timeline',
+                xaxis: {
+                    title: 'Time Period',
+                    type: data.bin_type === 'week' ? 'category' : 'date',
+                    tickformat: tickformat
+                },
+                yaxis: {
+                    title: 'Email Volume',
+                    rangemode: 'tozero'
+                },
+                hovermode: 'x unified',
+                showlegend: true,
+                legend: {
+                    x: 1,
+                    y: 1,
+                    xanchor: 'left',
+                    bgcolor: 'rgba(255,255,255,0.8)'
+                },
+                height: 600
+            };
+            
+            Plotly.newPlot('timeline', traces, layout);
+        }
+    }
+}
+</script>
+{% endblock %}

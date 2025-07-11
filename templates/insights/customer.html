@@ -1,0 +1,290 @@
+{% extends "base.html" %}
+
+{% block title %}Insights - {{ customer.name }} - CustomerSuccess{% endblock %}
+
+{% block content %}
+<div x-data="insightsApp()" class="h-full flex flex-col">
+    <!-- Top Search Panel (1/4 of page) -->
+    <div class="bg-white shadow-lg z-10" style="flex: 0 0 25%;">
+        <div class="p-6">
+            <div class="mb-4">
+                <h1 class="text-2xl font-bold text-gray-900">Customer Insights - {{ customer.name }}</h1>
+                <p class="text-gray-500">Ask questions about ongoing issues and communications</p>
+            </div>
+
+            <!-- Search Controls -->
+            <div class="space-y-4">
+                <!-- Search Input -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        What would you like to know about?
+                    </label>
+                    <div class="flex space-x-2">
+                        <input type="text" 
+                               x-model="query"
+                               @keyup.enter="submitQuery()"
+                               placeholder="e.g., 'contract negotiations', 'technical issues with API', 'payment status'"
+                               class="flex-1 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                        
+                        <!-- Search Mode Selector -->
+                        <select x-model="searchMode" 
+                                class="rounded-md border-gray-300 shadow-sm">
+                            <option value="strict">Exact Match</option>
+                            <option value="related">Include Related</option>
+                            <option value="fuzzy">Broad Search</option>
+                        </select>
+                        
+                        <button @click="submitQuery()"
+                                :disabled="!query || loading"
+                                class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50">
+                            <svg x-show="!loading" class="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                            </svg>
+                            <svg x-show="loading" class="animate-spin h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            <span x-text="loading ? 'Searching...' : 'Search'"></span>
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Quick Filters / Suggestions -->
+                <div class="flex items-center space-x-4">
+                    <span class="text-sm text-gray-500">Quick search:</span>
+                    <div class="flex flex-wrap gap-2">
+                        <template x-for="suggestion in suggestions">
+                            <button @click="query = suggestion; submitQuery()"
+                                    class="text-xs px-3 py-1 bg-gray-100 hover:bg-gray-200 rounded-full text-gray-700 transition-colors">
+                                <span x-text="suggestion"></span>
+                            </button>
+                        </template>
+                    </div>
+                </div>
+                
+                <!-- Search Stats -->
+                <div x-show="results" class="flex items-center justify-between text-sm">
+                    <div class="text-gray-600">
+                        Found <span class="font-semibold text-gray-900" x-text="results.direct_matches || 0"></span> direct matches
+                        <span x-show="results.total_matches > results.direct_matches">
+                            (and <span x-text="results.total_matches - results.direct_matches"></span> related)
+                        </span>
+                    </div>
+                    <div x-show="results.total_matches > 20" class="text-gray-500">
+                        Showing top 20 results
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Results Panel (3/4 of page) -->
+    <div class="flex-1 overflow-y-auto bg-gray-50" style="flex: 1 1 75%;">
+        <div class="p-6">
+            <!-- Loading State -->
+            <div x-show="loading && !results" class="flex justify-center py-12">
+                <div class="text-gray-500 text-center">
+                    <svg class="animate-spin h-12 w-12 mx-auto mb-4" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <p class="text-lg">Analyzing communications...</p>
+                    <p class="text-sm mt-2">Searching through emails and documents</p>
+                </div>
+            </div>
+
+            <!-- Results -->
+            <div x-show="results && !loading" x-cloak>
+                <!-- Narrative Summary -->
+                <div class="bg-white shadow rounded-lg p-6 mb-6">
+                    <div class="flex items-start justify-between mb-4">
+                        <h3 class="text-lg font-semibold text-gray-900">Analysis Summary</h3>
+                        <div class="flex space-x-2">
+                            <!-- Topic Tags from Analysis -->
+                            <template x-for="tag in extractTopicTags(results.narrative)">
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
+                                      :style="`background-color: ${tag.color}20; color: ${tag.color}`">
+                                    <span x-text="tag.name"></span>
+                                </span>
+                            </template>
+                        </div>
+                    </div>
+                    <p class="text-gray-700 leading-relaxed" x-text="results.narrative"></p>
+                </div>
+
+                <!-- Key Messages Timeline -->
+                <div class="bg-white shadow rounded-lg">
+                    <div class="px-6 py-4 border-b border-gray-200">
+                        <h3 class="text-lg font-semibold text-gray-900">Key Communications</h3>
+                    </div>
+                    
+                    <div class="divide-y divide-gray-200" x-show="results.key_messages.length > 0">
+                        <template x-for="message in results.key_messages" :key="message.id">
+                            <div class="p-6 hover:bg-gray-50 transition-colors">
+                                <div class="flex space-x-4">
+                                    <!-- Timeline Indicator -->
+                                    <div class="flex-shrink-0">
+                                        <div class="w-10 h-10 rounded-full flex items-center justify-center"
+                                             :class="message.sender_side === 'us' ? 'bg-blue-100' : 'bg-green-100'">
+                                            <svg class="w-5 h-5" 
+                                                 :class="message.sender_side === 'us' ? 'text-blue-600' : 'text-green-600'"
+                                                 fill="currentColor" viewBox="0 0 20 20">
+                                                <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z"></path>
+                                                <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z"></path>
+                                            </svg>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Message Content -->
+                                    <div class="flex-1 min-w-0">
+                                        <!-- Header -->
+                                        <div class="flex items-baseline justify-between mb-1">
+                                            <div class="flex items-baseline space-x-2">
+                                                <span class="font-medium text-gray-900" x-text="message.sender"></span>
+                                                <svg class="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"></path>
+                                                </svg>
+                                                <span class="text-gray-600" x-text="message.recipient"></span>
+                                            </div>
+                                            <time class="text-sm text-gray-500" x-text="formatDate(message.date)"></time>
+                                        </div>
+                                        
+                                        <!-- Subject with Tags -->
+                                        <div class="mb-2">
+                                            <h4 class="text-base font-medium text-gray-900 inline" x-text="message.subject"></h4>
+                                            <!-- Email Tags -->
+                                            <div class="inline-flex items-center ml-2 space-x-1" x-show="message.tags && message.tags.length > 0">
+                                                <template x-for="tag in message.tags" :key="tag.id">
+                                                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium"
+                                                          :style="`background-color: ${tag.color}15; color: ${tag.color}; border: 1px solid ${tag.color}30`">
+                                                        <span x-text="tag.name"></span>
+                                                    </span>
+                                                </template>
+                                            </div>
+                                        </div>
+                                        
+                                        <!-- Excerpt -->
+                                        <p class="text-sm text-gray-700 leading-relaxed" x-text="message.excerpt"></p>
+                                        
+                                        <!-- Relevance Score -->
+                                        <div class="mt-2 flex items-center space-x-4 text-xs text-gray-500">
+                                            <span class="flex items-center">
+                                                <svg class="h-3 w-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path>
+                                                </svg>
+                                                Relevance: <span x-text="Math.round(message.score)"></span>
+                                            </span>
+                                            <span x-show="message.direct_match" class="flex items-center text-green-600">
+                                                <svg class="h-3 w-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+                                                </svg>
+                                                Direct Match
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                    
+                    <div x-show="results.key_messages.length === 0" class="p-12 text-center">
+                        <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        <p class="mt-2 text-gray-500">No messages found matching your query.</p>
+                        <p class="text-sm text-gray-400 mt-1">Try adjusting your search terms or using a broader search mode.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Initial State -->
+            <div x-show="!results && !loading" class="text-center py-12">
+                <svg class="mx-auto h-16 w-16 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
+                </svg>
+                <p class="mt-4 text-lg text-gray-600">Enter a query above to analyze customer communications</p>
+                <p class="text-sm text-gray-500 mt-2">Search for topics, issues, or specific keywords</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function insightsApp() {
+    return {
+        query: '',
+        searchMode: 'strict',
+        loading: false,
+        results: null,
+        suggestions: {{ suggestions | tojson }},
+        
+        // Predefined topic tags for UI enrichment
+        topicTags: {
+            'contract': { name: 'Contract', color: '#7C3AED' },
+            'technical': { name: 'Technical', color: '#EF4444' },
+            'payment': { name: 'Payment', color: '#10B981' },
+            'feature': { name: 'Feature', color: '#3B82F6' },
+            'meeting': { name: 'Meeting', color: '#F59E0B' },
+            'delivery': { name: 'Timeline', color: '#EC4899' }
+        },
+        
+        async submitQuery() {
+            if (!this.query || this.loading) return;
+            
+            this.loading = true;
+            
+            try {
+                const response = await fetch(`/insights/api/query/{{ customer.id }}`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        query: this.query,
+                        search_mode: this.searchMode
+                    })
+                });
+                
+                if (response.ok) {
+                    this.results = await response.json();
+                } else {
+                    alert('Error processing query');
+                }
+            } catch (error) {
+                alert('Error: ' + error.message);
+            } finally {
+                this.loading = false;
+            }
+        },
+        
+        formatDate(dateString) {
+            const date = new Date(dateString);
+            const now = new Date();
+            const diffTime = Math.abs(now - date);
+            const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+            
+            if (diffDays === 0) {
+                return 'Today ' + date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+            } else if (diffDays === 1) {
+                return 'Yesterday ' + date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+            } else if (diffDays < 7) {
+                return diffDays + ' days ago';
+            } else {
+                return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+            }
+        },
+        
+        extractTopicTags(narrative) {
+            const tags = [];
+            const narrativeLower = narrative.toLowerCase();
+            
+            Object.entries(this.topicTags).forEach(([key, tag]) => {
+                if (narrativeLower.includes(key) || narrativeLower.includes(tag.name.toLowerCase())) {
+                    tags.push(tag);
+                }
+            });
+            
+            return tags;
+        }
+    }
+}
+</script>
+{% endblock %}

@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - CustomerSuccess{% endblock %}
+
+{% block content %}
+<div class="px-4 sm:px-0">
+    <h1 class="text-2xl font-bold text-gray-900 mb-6">Customer Dashboard</h1>
+    
+    {% if customers %}
+        <div class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {% for customer in customers %}
+                <div class="bg-white overflow-hidden shadow rounded-lg">
+                    <div class="px-4 py-5 sm:p-6">
+                        <h3 class="text-lg font-medium text-gray-900">
+                            {{ customer.name }}
+                        </h3>
+                        <p class="mt-1 text-sm text-gray-500">
+                            {{ customer.company }}
+                        </p>
+                        <div class="mt-4">
+                            <a href="{{ url_for('customers.detail', id=customer.id) }}" 
+                               class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700">
+                                View Details
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="text-center py-12">
+            <p class="text-gray-500 mb-4">No customers found.</p>
+            <a href="{{ url_for('customers.add') }}" 
+               class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700">
+                Add First Customer
+            </a>
+            <p class="text-sm text-gray-500 mt-4">
+                Or <a href="{{ url_for('init_db') }}" class="text-indigo-600 hover:text-indigo-500">initialize the database</a> with sample data.
+            </p>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+
+{% block title %}Directories - {{ customer.name }} - CustomerSuccess{% endblock %}
+
+{% block content %}
+<div class="mb-6 flex justify-between items-center">
+    <h1 class="text-2xl font-bold text-gray-900">Linked Directories - {{ customer.name }}</h1>
+    <div class="space-x-2">
+        <a href="{{ url_for('directories.file_analysis', customer_id=customer.id) }}" 
+           class="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+            File Analysis
+        </a>
+        <a href="{{ url_for('directories.link_directory', customer_id=customer.id) }}" 
+           class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700">
+            Link Local Directory
+        </a>
+        <a href="{{ url_for('drive.browse', customer_id=customer.id) }}" 
+           class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700">
+            Link Google Drive
+        </a>
+    </div>
+</div>
+
+{% if directories %}
+    <div class="bg-white shadow overflow-hidden sm:rounded-md">
+        <ul class="divide-y divide-gray-200">
+            {% for dir in directories %}
+                <li class="px-4 py-4 sm:px-6">
+                    <div class="flex items-center justify-between">
+                        <div class="flex-1">
+                            <h3 class="text-sm font-medium text-gray-900">
+                                {% if dir.link_type == 'drive' %}
+                                    <svg class="inline h-4 w-4 mr-1 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                                        <path d="M10 2a8 8 0 100 16 8 8 0 000-16zm3.707 9.293a1 1 0 00-1.414-1.414L9 13.586 7.707 12.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"/>
+                                    </svg>
+                                    Google Drive: 
+                                {% endif %}
+                                {{ dir.name }}
+                            </h3>
+                            <p class="text-sm text-gray-500">
+                                {% if dir.link_type == 'drive' %}
+                                    Drive ID: {{ dir.drive_id[:20] }}...
+                                    {% if dir.folder_id %}
+                                        / Folder: {{ dir.folder_id[:20] }}...
+                                    {% endif %}
+                                {% else %}
+                                    {{ dir.path }}
+                                {% endif %}
+                            </p>
+                            <div class="mt-1 flex items-center text-sm text-gray-500">
+                                <span>{{ dir.file_count }} files</span>
+                                <span class="mx-2">•</span>
+                                <span>{{ (dir.total_size / 1024 / 1024)|round(2) }} MB</span>
+                                {% if dir.last_scanned %}
+                                    <span class="mx-2">•</span>
+                                    <span>Last scanned: {{ dir.last_scanned|datetime }}</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
+                                {% if dir.scan_status == 'completed' %}bg-green-100 text-green-800
+                                {% elif dir.scan_status == 'scanning' %}bg-yellow-100 text-yellow-800
+                                {% else %}bg-gray-100 text-gray-800{% endif %}">
+                                {{ dir.scan_status }}
+                            </span>
+                            <form action="{{ url_for('directories.rescan_directory', directory_id=dir.id) }}" 
+                                  method="POST" class="inline">
+                                <button type="submit"
+                                        class="text-indigo-600 hover:text-indigo-900 text-sm">
+                                    Rescan
+                                </button>
+                            </form>
+                            <form action="{{ url_for('directories.unlink_directory', directory_id=dir.id) }}" 
+                                  method="POST" class="inline">
+                                <button type="submit"
+                                        onclick="return confirm('Unlink this directory?')"
+                                        class="text-red-600 hover:text-red-900 text-sm">
+                                    Unlink
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </li>
+            {% endfor %}
+        </ul>
+    </div>
+{% else %}
+    <div class="bg-white shadow rounded-lg p-6 text-center">
+        <p class="text-gray-500 mb-4">No directories linked yet.</p>
+        <a href="{{ url_for('directories.link_directory', customer_id=customer.id) }}" 
+           class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700">
+            Link First Directory
+        </a>
+    </div>
+{% endif %}
+{% endblock %}
