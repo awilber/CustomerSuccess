@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CustomerSuccess - Login</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 min-h-screen flex items-center justify-center">
+    <div class="max-w-md w-full space-y-8">
+        <div class="text-center">
+            <h2 class="mt-6 text-3xl font-extrabold text-gray-900">
+                CustomerSuccess
+            </h2>
+            <p class="mt-2 text-sm text-gray-600">
+                Please enter the access password
+            </p>
+        </div>
+        
+        <!-- Flash messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="rounded-md p-4 {% if category == 'error' %}bg-red-50 border border-red-200{% elif category == 'info' %}bg-blue-50 border border-blue-200{% endif %}">
+                        <div class="flex">
+                            <div class="ml-3">
+                                <p class="text-sm {% if category == 'error' %}text-red-800{% elif category == 'info' %}text-blue-800{% endif %}">
+                                    {{ message }}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+        
+        <form class="mt-8 space-y-6" method="POST">
+            <div>
+                <label for="password" class="sr-only">Password</label>
+                <input id="password" 
+                       name="password" 
+                       type="password" 
+                       required 
+                       class="relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm" 
+                       placeholder="Enter password"
+                       autofocus>
+            </div>
+            
+            <div>
+                <button type="submit" 
+                        class="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                    <span class="absolute left-0 inset-y-0 flex items-center pl-3">
+                        <svg class="h-5 w-5 text-indigo-500 group-hover:text-indigo-400" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"></path>
+                        </svg>
+                    </span>
+                    Access Application
+                </button>
+            </div>
+        </form>
+        
+        <div class="text-center">
+            <p class="text-xs text-gray-500">
+                Real Estate Customer Relationship Management
+            </p>
+        </div>
+    </div>
+
+    <script>
+        // Auto-focus password field
+        document.getElementById('password').focus();
+        
+        // Clear any error messages after 5 seconds
+        setTimeout(() => {
+            const alerts = document.querySelectorAll('.bg-red-50, .bg-blue-50');
+            alerts.forEach(alert => {
+                alert.style.transition = 'opacity 0.5s';
+                alert.style.opacity = '0';
+                setTimeout(() => alert.remove(), 500);
+            });
+        }, 5000);
+    </script>
+</body>
+</html>

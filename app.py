@@ -26,8 +26,9 @@ app = create_app()
 # console_handler = setup_logging(app)
 
 # Import routes after app creation to avoid circular imports
-from routes import customers, uploads, analytics, imports, drive, insights, directories
+from routes import customers, uploads, analytics, imports, drive, insights, directories, auth
 
+app.register_blueprint(auth.bp)
 app.register_blueprint(customers.bp)
 app.register_blueprint(uploads.bp)
 app.register_blueprint(analytics.bp)
@@ -40,6 +41,18 @@ app.register_blueprint(directories.bp)
 # Start background processor
 from services.background_tasks import background_processor
 background_processor.start()
+
+# Global authentication check
+@app.before_request
+def require_login():
+    from flask import session, request
+    # Skip authentication for login/logout routes
+    if request.endpoint and (request.endpoint.startswith('auth.') or request.endpoint == 'static'):
+        return
+    
+    # Check if user is authenticated
+    if not session.get('authenticated'):
+        return redirect(url_for('auth.login', next=request.url))
 
 @app.route('/')
 def index():
