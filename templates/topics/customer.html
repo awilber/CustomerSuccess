@@ -1,0 +1,603 @@
+{% extends "base.html" %}
+
+{% block title %}Topic Management - {{ customer.name }}{% endblock %}
+
+{% block content %}
+<div class="mb-6">
+    <div class="flex justify-between items-center mb-6">
+        <div>
+            <h1 class="text-3xl font-bold text-gray-900">Topic Management</h1>
+            <p class="text-gray-600">{{ customer.name }}</p>
+            <a href="{{ url_for('customers.detail', customer_id=customer.id) }}" 
+               class="text-indigo-600 hover:text-indigo-800 text-sm mt-2 inline-flex items-center">
+                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                </svg>
+                Back to {{ customer.name }}
+            </a>
+        </div>
+        <div class="space-x-2">
+            <button type="button" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700" onclick="openCreateTopicModal()">
+                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                </svg>
+                Create Topic
+            </button>
+            <button type="button" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700" onclick="runAutoClassification()">
+                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                </svg>
+                Auto-Classify Emails
+            </button>
+        </div>
+    </div>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <!-- Topic Hierarchy Panel -->
+    <div class="lg:col-span-1">
+        <div class="bg-white shadow rounded-lg">
+            <div class="px-4 py-5 border-b border-gray-200">
+                <h3 class="text-lg font-medium text-gray-900 flex items-center">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+                    </svg>
+                    Topic Hierarchy
+                </h3>
+            </div>
+            <div class="p-4">
+                <div id="topic-hierarchy" class="topic-tree">
+                    <!-- Hierarchy will be loaded here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Topic Details Panel -->
+    <div class="lg:col-span-2">
+        <div class="bg-white shadow rounded-lg">
+            <div class="px-4 py-5 border-b border-gray-200">
+                <h3 class="text-lg font-medium text-gray-900 flex items-center">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    Topic Details
+                </h3>
+            </div>
+            <div class="p-6">
+                <div id="topic-details">
+                    <div class="text-center text-gray-500">
+                        <svg class="w-12 h-12 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                        </svg>
+                        <p>Select a topic from the hierarchy to view details</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Topic Statistics Row -->
+<div class="mt-6">
+    <div class="bg-white shadow rounded-lg">
+        <div class="px-4 py-5 border-b border-gray-200">
+            <h3 class="text-lg font-medium text-gray-900 flex items-center">
+                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                </svg>
+                Topic Statistics
+            </h3>
+        </div>
+        <div class="p-6">
+            <div id="topic-stats">
+                <!-- Statistics will be loaded here -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Create Topic Modal -->
+<div x-data="{ showModal: false }" x-show="showModal" x-cloak class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50" id="createTopicModal">
+    <div class="relative top-20 mx-auto p-5 border w-11/12 md:w-3/4 lg:w-1/2 shadow-lg rounded-md bg-white">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-lg font-bold text-gray-900">Create New Topic</h3>
+            <button @click="showModal = false" class="text-gray-400 hover:text-gray-600">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
+        </div>
+        
+        <form id="createTopicForm" @submit.prevent="handleCreateTopic">
+            <div class="space-y-4">
+                <div>
+                    <label for="topicName" class="block text-sm font-medium text-gray-700">Topic Name</label>
+                    <input type="text" id="topicName" name="name" required
+                           class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                </div>
+                
+                <div>
+                    <label for="topicDescription" class="block text-sm font-medium text-gray-700">Description</label>
+                    <textarea id="topicDescription" name="description" rows="3"
+                              class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"></textarea>
+                </div>
+                
+                <div>
+                    <label for="topicLevel" class="block text-sm font-medium text-gray-700">Level</label>
+                    <select id="topicLevel" name="level" required
+                            class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                        <option value="0">Main Topic</option>
+                        <option value="1">Sub Topic</option>
+                        <option value="2">Micro Topic</option>
+                    </select>
+                </div>
+                
+                <div>
+                    <label for="topicParent" class="block text-sm font-medium text-gray-700">Parent Topic</label>
+                    <select id="topicParent" name="parent_id"
+                            class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                        <option value="">None (Main Topic)</option>
+                        <!-- Options will be loaded dynamically -->
+                    </select>
+                </div>
+                
+                <div>
+                    <label for="topicColor" class="block text-sm font-medium text-gray-700">Color</label>
+                    <input type="color" id="topicColor" name="color"
+                           class="mt-1 block w-full h-10 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                </div>
+                
+                <div>
+                    <label for="topicKeywords" class="block text-sm font-medium text-gray-700">Keywords (comma-separated)</label>
+                    <input type="text" id="topicKeywords" name="keywords"
+                           placeholder="keyword1, keyword2, keyword3"
+                           class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                </div>
+            </div>
+            
+            <div class="flex items-center justify-end space-x-2 mt-6">
+                <button type="button" @click="showModal = false"
+                        class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50">
+                    Cancel
+                </button>
+                <button type="submit"
+                        class="px-4 py-2 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-md shadow-sm hover:bg-indigo-700">
+                    Create Topic
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+.topic-tree {
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.topic-item {
+    @apply px-3 py-2 my-1 rounded cursor-pointer transition-colors;
+}
+
+.topic-item:hover {
+    @apply bg-gray-50;
+}
+
+.topic-item.selected {
+    @apply bg-indigo-50 border-l-4 border-indigo-500;
+}
+
+.topic-level-0 {
+    @apply font-bold border-l-4 border-green-500;
+}
+
+.topic-level-1 {
+    @apply ml-5 border-l-4 border-orange-500;
+}
+
+.topic-level-2 {
+    @apply ml-10 border-l-4 border-red-500;
+}
+
+.topic-stats {
+    @apply flex justify-around text-center;
+}
+
+.stat-item {
+    @apply flex-1 p-5;
+}
+
+.stat-number {
+    @apply text-3xl font-bold text-indigo-600;
+}
+
+.stat-label {
+    @apply text-gray-600 mt-1;
+}
+</style>
+
+<script>
+const customerId = {{ customer.id }};
+let currentTopicId = null;
+let topicHierarchy = [];
+
+// Initialize page
+document.addEventListener('DOMContentLoaded', function() {
+    loadTopicHierarchy();
+    loadTopicStats();
+    
+    // Set up form handlers
+    document.getElementById('createTopicForm').addEventListener('submit', handleCreateTopic);
+    document.getElementById('topicLevel').addEventListener('change', updateParentOptions);
+});
+
+async function loadTopicHierarchy() {
+    try {
+        const response = await fetch(`/topics/api/customer/${customerId}/hierarchy`);
+        const hierarchy = await response.json();
+        
+        topicHierarchy = hierarchy;
+        renderTopicHierarchy(hierarchy);
+    } catch (error) {
+        console.error('Error loading topic hierarchy:', error);
+        showAlert('Error loading topic hierarchy', 'danger');
+    }
+}
+
+function renderTopicHierarchy(hierarchy) {
+    const container = document.getElementById('topic-hierarchy');
+    container.innerHTML = '';
+    
+    if (hierarchy.length === 0) {
+        container.innerHTML = '<p class="text-muted">No topics created yet. Create your first topic to get started.</p>';
+        return;
+    }
+    
+    hierarchy.forEach(topic => {
+        renderTopicItem(topic, container, 0);
+    });
+}
+
+function renderTopicItem(topic, container, level) {
+    const item = document.createElement('div');
+    item.className = `topic-item topic-level-${level}`;
+    item.style.backgroundColor = topic.color || '#f8f9fa';
+    item.onclick = () => selectTopic(topic.id);
+    
+    item.innerHTML = `
+        <div class="d-flex justify-content-between align-items-center">
+            <span>${topic.name}</span>
+            <small class="text-muted">${topic.email_count || 0} emails</small>
+        </div>
+        ${topic.description ? `<small class="text-muted">${topic.description}</small>` : ''}
+    `;
+    
+    container.appendChild(item);
+    
+    // Render children
+    if (topic.children && topic.children.length > 0) {
+        topic.children.forEach(child => {
+            renderTopicItem(child, container, level + 1);
+        });
+    }
+}
+
+async function selectTopic(topicId) {
+    currentTopicId = topicId;
+    
+    // Update selection visual
+    document.querySelectorAll('.topic-item').forEach(item => {
+        item.classList.remove('selected');
+    });
+    event.target.closest('.topic-item').classList.add('selected');
+    
+    try {
+        const response = await fetch(`/topics/api/topic/${topicId}`);
+        const topic = await response.json();
+        
+        renderTopicDetails(topic);
+    } catch (error) {
+        console.error('Error loading topic details:', error);
+        showAlert('Error loading topic details', 'danger');
+    }
+}
+
+function renderTopicDetails(topic) {
+    const container = document.getElementById('topic-details');
+    
+    container.innerHTML = `
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div class="md:col-span-2">
+                <h4 class="text-xl font-bold mb-2" style="color: ${topic.color || '#333'}">${topic.name}</h4>
+                <p class="text-gray-600 mb-4">${topic.description || 'No description provided'}</p>
+                
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <span class="font-semibold">Level:</span> ${['Main Topic', 'Sub Topic', 'Micro Topic'][topic.level] || 'Unknown'}
+                    </div>
+                    <div>
+                        <span class="font-semibold">Email Count:</span> ${topic.email_count || 0}
+                    </div>
+                </div>
+                
+                <div class="mb-4">
+                    <span class="font-semibold">Keywords:</span>
+                    <div class="mt-1">
+                        ${(topic.keywords || []).map(k => `<span class="inline-block bg-gray-200 text-gray-800 text-xs px-2 py-1 rounded-full mr-1 mb-1">${k}</span>`).join('')}
+                    </div>
+                </div>
+                
+                <div class="mb-4">
+                    <span class="font-semibold">Recent Emails:</span>
+                    <div id="topic-emails-${topic.id}" class="mt-2">
+                        <div class="flex items-center">
+                            <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-indigo-600 mr-2"></div>
+                            Loading...
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="md:col-span-1">
+                <div class="space-y-2">
+                    <button class="w-full inline-flex items-center px-3 py-2 border border-indigo-600 text-sm font-medium rounded-md text-indigo-600 bg-white hover:bg-indigo-50" onclick="editTopic(${topic.id})">
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                        </svg>
+                        Edit Topic
+                    </button>
+                    <button class="w-full inline-flex items-center px-3 py-2 border border-green-600 text-sm font-medium rounded-md text-green-600 bg-white hover:bg-green-50" onclick="assignToEmails(${topic.id})">
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"></path>
+                        </svg>
+                        Assign to Emails
+                    </button>
+                    <button class="w-full inline-flex items-center px-3 py-2 border border-blue-600 text-sm font-medium rounded-md text-blue-600 bg-white hover:bg-blue-50" onclick="viewSimilarTopics(${topic.id})">
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path>
+                        </svg>
+                        Similar Topics
+                    </button>
+                    <button class="w-full inline-flex items-center px-3 py-2 border border-red-600 text-sm font-medium rounded-md text-red-600 bg-white hover:bg-red-50" onclick="deleteTopic(${topic.id})">
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                        </svg>
+                        Delete Topic
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // Load recent emails for this topic
+    loadTopicEmails(topic.id);
+}
+
+async function loadTopicEmails(topicId) {
+    try {
+        const response = await fetch(`/topics/api/topic/${topicId}/emails?limit=5`);
+        const emails = await response.json();
+        
+        const container = document.getElementById(`topic-emails-${topicId}`);
+        
+        if (emails.length === 0) {
+            container.innerHTML = '<p class="text-gray-500">No emails assigned to this topic yet.</p>';
+            return;
+        }
+        
+        container.innerHTML = emails.map(email => `
+            <div class="border rounded-lg p-3 mb-2 bg-gray-50">
+                <div class="flex justify-between items-start mb-1">
+                    <strong class="text-gray-900">${email.subject || 'No subject'}</strong>
+                    <small class="text-gray-500">${email.date || 'Unknown date'}</small>
+                </div>
+                <small class="text-gray-600">From: ${email.sender_name || 'Unknown'}</small>
+                <div class="mt-2">
+                    <span class="inline-block bg-indigo-100 text-indigo-800 text-xs px-2 py-1 rounded-full">
+                        Confidence: ${Math.round((email.confidence_score || 0) * 100)}%
+                    </span>
+                </div>
+            </div>
+        `).join('');
+    } catch (error) {
+        console.error('Error loading topic emails:', error);
+        const container = document.getElementById(`topic-emails-${topicId}`);
+        container.innerHTML = '<p class="text-red-500">Error loading emails</p>';
+    }
+}
+
+async function loadTopicStats() {
+    try {
+        const response = await fetch(`/topics/api/customer/${customerId}/stats`);
+        const stats = await response.json();
+        
+        const container = document.getElementById('topic-stats');
+        container.innerHTML = `
+            <div class="topic-stats">
+                <div class="stat-item">
+                    <div class="stat-number">${stats.total_topics || 0}</div>
+                    <div class="stat-label">Total Topics</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number">${stats.classified_emails || 0}</div>
+                    <div class="stat-label">Classified Emails</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number">${stats.avg_confidence || 0}%</div>
+                    <div class="stat-label">Avg Confidence</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number">${stats.auto_classified || 0}</div>
+                    <div class="stat-label">Auto-Classified</div>
+                </div>
+            </div>
+        `;
+    } catch (error) {
+        console.error('Error loading topic stats:', error);
+        document.getElementById('topic-stats').innerHTML = '<p class="text-red-500">Error loading statistics</p>';
+    }
+}
+
+async function handleCreateTopic(event) {
+    event.preventDefault();
+    
+    const formData = new FormData(event.target);
+    const data = {
+        name: formData.get('name'),
+        description: formData.get('description'),
+        level: parseInt(formData.get('level')),
+        parent_id: formData.get('parent_id') || null,
+        color: formData.get('color'),
+        keywords: formData.get('keywords') ? formData.get('keywords').split(',').map(k => k.trim()) : []
+    };
+    
+    try {
+        const response = await fetch(`/topics/api/customer/${customerId}/create`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data)
+        });
+        
+        if (response.ok) {
+            const topic = await response.json();
+            showAlert('Topic created successfully!', 'success');
+            
+            // Close modal and refresh hierarchy
+            document.getElementById('createTopicModal').__x.$data.showModal = false;
+            loadTopicHierarchy();
+            loadTopicStats();
+            
+            // Clear form
+            document.getElementById('createTopicForm').reset();
+        } else {
+            const error = await response.json();
+            showAlert(`Error creating topic: ${error.error}`, 'danger');
+        }
+    } catch (error) {
+        console.error('Error creating topic:', error);
+        showAlert('Error creating topic', 'danger');
+    }
+}
+
+function updateParentOptions() {
+    const level = parseInt(document.getElementById('topicLevel').value);
+    const parentSelect = document.getElementById('topicParent');
+    
+    // Clear existing options
+    parentSelect.innerHTML = '<option value="">None (Main Topic)</option>';
+    
+    if (level > 0) {
+        // Load available parent topics
+        const availableParents = getAvailableParents(level - 1);
+        availableParents.forEach(topic => {
+            const option = document.createElement('option');
+            option.value = topic.id;
+            option.textContent = topic.name;
+            parentSelect.appendChild(option);
+        });
+    }
+}
+
+function getAvailableParents(maxLevel) {
+    const parents = [];
+    
+    function traverse(topics, currentLevel) {
+        topics.forEach(topic => {
+            if (currentLevel <= maxLevel) {
+                parents.push(topic);
+            }
+            if (topic.children) {
+                traverse(topic.children, currentLevel + 1);
+            }
+        });
+    }
+    
+    traverse(topicHierarchy, 0);
+    return parents;
+}
+
+async function runAutoClassification() {
+    if (!confirm('This will automatically classify emails based on existing topics. Continue?')) {
+        return;
+    }
+    
+    showAlert('Starting auto-classification...', 'info');
+    
+    try {
+        const response = await fetch(`/topics/api/customer/${customerId}/auto-classify`, {
+            method: 'POST'
+        });
+        
+        if (response.ok) {
+            const result = await response.json();
+            showAlert(`Auto-classification completed! Classified ${result.classified_count} emails.`, 'success');
+            loadTopicStats();
+        } else {
+            const error = await response.json();
+            showAlert(`Error in auto-classification: ${error.error}`, 'danger');
+        }
+    } catch (error) {
+        console.error('Error in auto-classification:', error);
+        showAlert('Error in auto-classification', 'danger');
+    }
+}
+
+function showAlert(message, type) {
+    const alertContainer = document.createElement('div');
+    const colorClasses = {
+        'success': 'bg-green-50 border-green-200 text-green-800',
+        'danger': 'bg-red-50 border-red-200 text-red-800',
+        'info': 'bg-blue-50 border-blue-200 text-blue-800',
+        'warning': 'bg-yellow-50 border-yellow-200 text-yellow-800'
+    };
+    
+    alertContainer.className = `border-l-4 p-4 mb-4 rounded-md ${colorClasses[type] || colorClasses.info}`;
+    alertContainer.innerHTML = `
+        <div class="flex justify-between items-center">
+            <div>${message}</div>
+            <button type="button" class="text-gray-400 hover:text-gray-600" onclick="this.parentElement.parentElement.remove()">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
+        </div>
+    `;
+    
+    document.querySelector('.mb-6').insertBefore(alertContainer, document.querySelector('.mb-6').firstChild);
+    
+    // Auto-dismiss after 5 seconds
+    setTimeout(() => {
+        if (alertContainer.parentNode) {
+            alertContainer.remove();
+        }
+    }, 5000);
+}
+
+// Modal functions
+function openCreateTopicModal() {
+    document.getElementById('createTopicModal').__x.$data.showModal = true;
+}
+
+// Placeholder functions for additional features
+function editTopic(topicId) {
+    showAlert('Edit topic functionality coming soon!', 'info');
+}
+
+function assignToEmails(topicId) {
+    showAlert('Email assignment functionality coming soon!', 'info');
+}
+
+function viewSimilarTopics(topicId) {
+    showAlert('Similar topics functionality coming soon!', 'info');
+}
+
+function deleteTopic(topicId) {
+    if (confirm('Are you sure you want to delete this topic?')) {
+        showAlert('Delete topic functionality coming soon!', 'info');
+    }
+}
+</script>
+{% endblock %}

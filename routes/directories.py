@@ -1,9 +1,10 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
 from models import db, Customer, DirectoryLink, FileReference, FileEmailCorrelation, EmailThread
 from services.directory_scanner import directory_scanner
-from services.background_tasks import background_processor
+from services.background_tasks import get_background_processor
 from services.correlation_engine import correlation_engine
 from services.drive_service import get_drive_service
+from services.directory_logging import directory_logger
 import os
 import json
 
@@ -60,12 +61,14 @@ def link_directory(customer_id):
                 db.session.commit()
                 
                 # Queue background scan
-                background_processor.add_task(
-                    'scan_directory',
-                    directory_path=directory_path,
-                    customer_id=customer_id,
-                    directory_link_id=dir_link.id
-                )
+                processor = get_background_processor()
+                if processor:
+                    processor.add_task(
+                        'scan_directory',
+                        directory_path=directory_path,
+                        customer_id=customer_id,
+                        directory_link_id=dir_link.id
+                    )
                 
                 flash(f'Directory linked successfully. Scanning {stats["file_count"]} files in background.', 'success')
                 return redirect(url_for('directories.customer_directories', customer_id=customer_id))
@@ -81,43 +84,94 @@ def link_drive_directory(customer_id):
     folder_id = request.form.get('folder_id')
     folder_name = request.form.get('folder_name', 'Untitled Drive Folder')
     
+    # Log the start of directory linking
+    directory_logger.log_directory_link_start(
+        customer_id=customer_id,
+        directory_type='google_drive',
+        drive_id=drive_id,
+        folder_id=folder_id,
+        folder_name=folder_name
+    )
+    
     if not drive_id:
-        flash('No drive selected', 'error')
+        error_msg = 'No drive selected'
+        directory_logger.log_directory_link_error(
+            customer_id=customer_id,
+            directory_type='google_drive',
+            error=error_msg,
+            details={"drive_id": drive_id, "folder_id": folder_id}
+        )
+        flash(error_msg, 'error')
         return redirect(url_for('directories.customer_directories', customer_id=customer_id))
     
-    # Check if already linked
-    existing = DirectoryLink.query.filter_by(
-        customer_id=customer_id,
-        link_type='drive',
-        drive_id=drive_id,
-        folder_id=folder_id
-    ).first()
-    
-    if existing:
-        flash('Drive directory already linked', 'warning')
-    else:
-        # Create directory link for Google Drive
-        dir_link = DirectoryLink(
+    try:
+        # Check if already linked
+        existing = DirectoryLink.query.filter_by(
             customer_id=customer_id,
             link_type='drive',
             drive_id=drive_id,
-            folder_id=folder_id,
-            name=folder_name,
-            path=None  # No local path for Drive directories
-        )
-        db.session.add(dir_link)
-        db.session.commit()
+            folder_id=folder_id
+        ).first()
         
-        # Queue background scan for Drive files
-        background_processor.add_task(
-            'scan_drive_directory',
-            drive_id=drive_id,
-            folder_id=folder_id,
+        if existing:
+            warning_msg = 'Drive directory already linked'
+            directory_logger.log_directory_link_error(
+                customer_id=customer_id,
+                directory_type='google_drive',
+                error=warning_msg,
+                details={"existing_link_id": existing.id}
+            )
+            flash(warning_msg, 'warning')
+        else:
+            # Create directory link for Google Drive
+            dir_link = DirectoryLink(
+                customer_id=customer_id,
+                link_type='drive',
+                drive_id=drive_id,
+                folder_id=folder_id,
+                name=folder_name,
+                path=None,  # No local path for Drive directories
+                scan_status='pending'
+            )
+            db.session.add(dir_link)
+            db.session.commit()
+            
+            # Log successful directory linking
+            directory_logger.log_directory_link_success(
+                customer_id=customer_id,
+                directory_link_id=dir_link.id,
+                directory_type='google_drive',
+                details={
+                    "drive_id": drive_id,
+                    "folder_id": folder_id,
+                    "folder_name": folder_name,
+                    "directory_link_id": dir_link.id
+                }
+            )
+            
+            # Queue background scan for Drive files
+            processor = get_background_processor()
+            if processor:
+                processor.add_task(
+                    'scan_drive_directory',
+                    drive_id=drive_id,
+                    folder_id=folder_id,
+                    customer_id=customer_id,
+                    directory_link_id=dir_link.id
+                )
+            
+            flash(f'Google Drive directory "{folder_name}" linked successfully. Scanning files in background.', 'success')
+        
+    except Exception as e:
+        error_msg = f'Error linking Google Drive directory: {str(e)}'
+        directory_logger.log_directory_link_error(
             customer_id=customer_id,
-            directory_link_id=dir_link.id
+            directory_type='google_drive',
+            error=error_msg,
+            details={"drive_id": drive_id, "folder_id": folder_id, "exception": str(e)}
         )
-        
-        flash(f'Google Drive directory "{folder_name}" linked successfully. Scanning files in background.', 'success')
+        flash(error_msg, 'error')
+        db.session.rollback()
     
     return redirect(url_for('directories.customer_directories', customer_id=customer_id))
 
@@ -127,21 +181,23 @@ def rescan_directory(directory_id):
     dir_link = DirectoryLink.query.get_or_404(directory_id)
     
     # Queue background scan based on type
-    if dir_link.link_type == 'drive':
-        background_processor.add_task(
-            'scan_drive_directory',
-            drive_id=dir_link.drive_id,
-            folder_id=dir_link.folder_id,
-            customer_id=dir_link.customer_id,
-            directory_link_id=dir_link.id
-        )
-    else:
-        background_processor.add_task(
-            'scan_directory',
-            directory_path=dir_link.path,
-            customer_id=dir_link.customer_id,
-            directory_link_id=dir_link.id
-        )
+    processor = get_background_processor()
+    if processor:
+        if dir_link.link_type == 'drive':
+            processor.add_task(
+                'scan_drive_directory',
+                drive_id=dir_link.drive_id,
+                folder_id=dir_link.folder_id,
+                customer_id=dir_link.customer_id,
+                directory_link_id=dir_link.id
+            )
+        else:
+            processor.add_task(
+                'scan_directory',
+                directory_path=dir_link.path,
+                customer_id=dir_link.customer_id,
+                directory_link_id=dir_link.id
+            )
     
     flash('Directory scan started in background', 'success')
     return redirect(url_for('directories.customer_directories', customer_id=dir_link.customer_id))
@@ -258,10 +314,69 @@ def file_details(file_id):
 @bp.route('/recalculate/<int:customer_id>', methods=['POST'])
 def recalculate_importance(customer_id):
     """Trigger importance score recalculation"""
-    background_processor.add_task(
-        'recalculate_importance',
-        customer_id=customer_id
-    )
+    processor = get_background_processor()
+    if processor:
+        processor.add_task(
+            'recalculate_importance',
+            customer_id=customer_id
+        )
     
     flash('Importance scores recalculation started', 'success')
     return redirect(request.referrer or url_for('directories.file_analysis', customer_id=customer_id))
+
+@bp.route('/api/scan-progress/<int:directory_link_id>')
+def get_scan_progress(directory_link_id):
+    """Get real-time scan progress for a directory"""
+    try:
+        # Get progress from directory logger
+        progress = directory_logger.get_progress(f"scan_{directory_link_id}")
+        
+        # Get directory link info
+        dir_link = DirectoryLink.query.get_or_404(directory_link_id)
+        
+        # Combine database status with progress tracking
+        response_data = {
+            'directory_link_id': directory_link_id,
+            'directory_name': dir_link.name,
+            'directory_type': dir_link.link_type,
+            'database_status': dir_link.scan_status,
+            'file_count': dir_link.file_count or 0,
+            'total_size': dir_link.total_size or 0,
+            'last_scanned': dir_link.last_scanned.isoformat() if dir_link.last_scanned else None,
+            'progress': progress
+        }
+        
+        return jsonify(response_data)
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@bp.route('/api/scan-progress/customer/<int:customer_id>')
+def get_customer_scan_progress(customer_id):
+    """Get scan progress for all directories for a customer"""
+    try:
+        # Get all directory links for customer
+        dir_links = DirectoryLink.query.filter_by(customer_id=customer_id).all()
+        
+        progress_data = []
+        for dir_link in dir_links:
+            progress = directory_logger.get_progress(f"scan_{dir_link.id}")
+            
+            progress_data.append({
+                'directory_link_id': dir_link.id,
+                'directory_name': dir_link.name,
+                'directory_type': dir_link.link_type,
+                'database_status': dir_link.scan_status,
+                'file_count': dir_link.file_count or 0,
+                'total_size': dir_link.total_size or 0,
+                'last_scanned': dir_link.last_scanned.isoformat() if dir_link.last_scanned else None,
+                'progress': progress
+            })
+        
+        return jsonify({
+            'customer_id': customer_id,
+            'directories': progress_data
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500

@@ -3,45 +3,159 @@
 {% block title %}Timeline - {{ customer.name }} - CustomerSuccess{% endblock %}
 
 {% block content %}
-<div x-data="timelineApp()">
+<div x-data="timelineApp()" x-init="init()">
     <div class="mb-6">
         <h1 class="text-2xl font-bold text-gray-900">Communication Timeline - {{ customer.name }}</h1>
         <p class="text-gray-500">Visual timeline of all email communications</p>
     </div>
 
-    <!-- Filters -->
-    <div class="bg-white shadow rounded-lg p-6 mb-6">
-        <h3 class="text-lg font-medium text-gray-900 mb-4">Filters</h3>
+    <!-- Two-column layout -->
+    <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
         
-        <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
-            <div>
-                <label class="block text-sm font-medium text-gray-700">Person</label>
-                <select x-model="filters.person" @change="updateTimeline()"
-                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
-                    <option value="">All People</option>
-                    {% for person in people %}
-                        <option value="{{ person.name }}">{{ person.name }} ({{ person.side }})</option>
-                    {% endfor %}
-                </select>
-            </div>
-            
-            <div>
-                <label class="block text-sm font-medium text-gray-700">Start Date</label>
-                <input type="date" x-model="filters.startDate" @change="updateTimeline()"
-                       class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
-            </div>
-            
-            <div>
-                <label class="block text-sm font-medium text-gray-700">End Date</label>
-                <input type="date" x-model="filters.endDate" @change="updateTimeline()"
-                       class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+        <!-- Left Panel: Filters -->
+        <div class="lg:col-span-1">
+            <div class="bg-white shadow rounded-lg p-6 space-y-6">
+                
+                <!-- Timeline View Mode -->
+                <div>
+                    <h3 class="text-lg font-medium text-gray-900 mb-3">Timeline Mode</h3>
+                    <div class="space-y-2">
+                        <label class="flex items-center">
+                            <input type="radio" x-model="viewMode" value="user" @change="updateTimeline()" class="mr-2">
+                            <span class="text-sm">By User</span>
+                        </label>
+                        <label class="flex items-center">
+                            <input type="radio" x-model="viewMode" value="topic" @change="updateTimeline()" class="mr-2">
+                            <span class="text-sm">By Topic</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Date Range Filter -->
+                <div>
+                    <h3 class="text-lg font-medium text-gray-900 mb-3">Date Range</h3>
+                    <div class="space-y-2">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
+                            <input type="date" x-model="filters.startDate" @change="updateTimeline()"
+                                   class="w-full rounded-md border-gray-300 shadow-sm text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">End Date</label>
+                            <input type="date" x-model="filters.endDate" @change="updateTimeline()"
+                                   class="w-full rounded-md border-gray-300 shadow-sm text-sm">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sender Filter -->
+                <div>
+                    <h3 class="text-lg font-medium text-gray-900 mb-3">Sender Filter</h3>
+                    <div class="max-h-40 overflow-y-auto border rounded p-2">
+                        <template x-for="sender in senders" :key="sender">
+                            <label class="flex items-center py-1">
+                                <input type="checkbox" 
+                                       :value="sender" 
+                                       x-model="selectedSenders" 
+                                       @change="updateTimeline()"
+                                       class="mr-2">
+                                <span class="text-sm" x-text="sender"></span>
+                            </label>
+                        </template>
+                    </div>
+                </div>
+
+                <!-- Recipient Filter -->
+                <div>
+                    <h3 class="text-lg font-medium text-gray-900 mb-3">Recipient Filter</h3>
+                    <div class="max-h-40 overflow-y-auto border rounded p-2">
+                        <template x-for="recipient in recipients" :key="recipient">
+                            <label class="flex items-center py-1">
+                                <input type="checkbox" 
+                                       :value="recipient" 
+                                       x-model="selectedRecipients" 
+                                       @change="updateTimeline()"
+                                       class="mr-2">
+                                <span class="text-sm" x-text="recipient"></span>
+                            </label>
+                        </template>
+                    </div>
+                </div>
+
+                <!-- Quick Filters -->
+                <div>
+                    <h3 class="text-lg font-medium text-gray-900 mb-3">Quick Filters</h3>
+                    <div class="space-y-2">
+                        <button @click="selectOurDomains()" 
+                                class="w-full text-left px-3 py-2 bg-blue-50 text-blue-700 rounded text-sm hover:bg-blue-100">
+                            Select Our Domains Only
+                        </button>
+                        <button @click="selectAll()" 
+                                class="w-full text-left px-3 py-2 bg-gray-50 text-gray-700 rounded text-sm hover:bg-gray-100">
+                            Select All
+                        </button>
+                        <button @click="clearAll()" 
+                                class="w-full text-left px-3 py-2 bg-red-50 text-red-700 rounded text-sm hover:bg-red-100">
+                            Clear All
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Topics Filter (when in topic mode) -->
+                <div x-show="viewMode === 'topic' && (topics.main_topics.length > 0 || topics.sub_topics.length > 0)">
+                    <h3 class="text-lg font-medium text-gray-900 mb-3">Topics Filter</h3>
+                    
+                    <!-- Main Topics -->
+                    <div x-show="topics.main_topics.length > 0" class="mb-4">
+                        <h4 class="text-sm font-medium text-gray-700 mb-2">Main Topics</h4>
+                        <div class="max-h-32 overflow-y-auto border rounded p-2">
+                            <template x-for="topic in topics.main_topics" :key="topic.name">
+                                <label class="flex items-center py-1">
+                                    <input type="checkbox" 
+                                           :value="topic.name" 
+                                           x-model="selectedMainTopics" 
+                                           @change="updateTimeline()"
+                                           class="mr-2">
+                                    <span class="text-sm" x-text="topic.name"></span>
+                                    <span class="text-xs text-gray-500 ml-1" x-text="'(' + topic.count + ')'"></span>
+                                </label>
+                            </template>
+                        </div>
+                    </div>
+
+                    <!-- Sub Topics -->
+                    <div x-show="topics.sub_topics.length > 0">
+                        <h4 class="text-sm font-medium text-gray-700 mb-2">Sub Topics</h4>
+                        <div class="max-h-32 overflow-y-auto border rounded p-2">
+                            <template x-for="topic in topics.sub_topics" :key="topic.name">
+                                <label class="flex items-center py-1">
+                                    <input type="checkbox" 
+                                           :value="topic.name" 
+                                           x-model="selectedSubTopics" 
+                                           @change="updateTimeline()"
+                                           class="mr-2">
+                                    <span class="text-sm" x-text="topic.name"></span>
+                                    <span class="text-xs text-gray-500 ml-1" x-text="'(' + topic.count + ')'"></span>
+                                </label>
+                            </template>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
-    </div>
 
-    <!-- Timeline Visualization -->
-    <div class="bg-white shadow rounded-lg p-6">
-        <div id="timeline" style="height: 600px;"></div>
+        <!-- Right Panel: Timeline Visualization -->
+        <div class="lg:col-span-3">
+            <div class="bg-white shadow rounded-lg p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-medium text-gray-900">Communication Timeline</h3>
+                    <div class="text-sm text-gray-600">
+                        <span x-text="getFilteredEmailCount()"></span> emails shown
+                    </div>
+                </div>
+                <div id="timeline" style="height: 600px;"></div>
+            </div>
+        </div>
     </div>
 
     <!-- Legend -->
@@ -56,6 +170,10 @@
                 <div class="w-4 h-4 bg-green-500 rounded-full mr-2"></div>
                 <span class="text-sm text-gray-700">Customer Team</span>
             </div>
+            <div x-show="viewMode === 'topic'" class="flex items-center">
+                <div class="w-4 h-4 bg-purple-500 rounded-full mr-2"></div>
+                <span class="text-sm text-gray-700">Topic-based View</span>
+            </div>
         </div>
     </div>
 </div>
@@ -63,26 +181,105 @@
 <script>
 function timelineApp() {
     return {
+        viewMode: 'user',
         filters: {
             person: '',
-            startDate: '',
-            endDate: ''
+            startDate: '2023-07-01',
+            endDate: new Date().toISOString().split('T')[0]
+        },
+        senders: [],
+        recipients: [],
+        selectedSenders: [],
+        selectedRecipients: [],
+        topics: { main_topics: [], sub_topics: [] },
+        selectedMainTopics: [],
+        selectedSubTopics: [],
+        filteredEmailCount: 0,
+        
+        async init() {
+            await this.loadEmailAddresses();
+            this.selectOurDomains();
+            await this.loadTopics();
+            this.updateTimeline();
         },
         
-        init() {
-            this.updateTimeline();
+        async loadEmailAddresses() {
+            try {
+                const response = await fetch(`/embeddings/api/customer/{{ customer.id }}/email-addresses`);
+                const data = await response.json();
+                this.senders = data.senders;
+                this.recipients = data.recipients;
+            } catch (error) {
+                console.error('Error loading email addresses:', error);
+            }
+        },
+        
+        selectOurDomains() {
+            const ourDomains = ['wiredtriangle.com', 'knewvantage.com'];
+            this.selectedSenders = this.senders.filter(sender => 
+                ourDomains.some(domain => sender.includes('@' + domain))
+            );
+            this.selectedRecipients = this.recipients.filter(recipient => 
+                ourDomains.some(domain => recipient.includes('@' + domain))
+            );
+        },
+        
+        selectAll() {
+            this.selectedSenders = [...this.senders];
+            this.selectedRecipients = [...this.recipients];
+            this.selectedMainTopics = this.topics.main_topics.map(topic => topic.name);
+            this.selectedSubTopics = this.topics.sub_topics.map(topic => topic.name);
+        },
+        
+        clearAll() {
+            this.selectedSenders = [];
+            this.selectedRecipients = [];
+            this.selectedMainTopics = [];
+            this.selectedSubTopics = [];
+        },
+        
+        async loadTopics() {
+            try {
+                const response = await fetch(`/embeddings/api/customer/{{ customer.id }}/topics`);
+                const data = await response.json();
+                this.topics = data;
+                
+                // Pre-select all topics by default
+                this.selectedMainTopics = this.topics.main_topics.map(topic => topic.name);
+                this.selectedSubTopics = this.topics.sub_topics.map(topic => topic.name);
+            } catch (error) {
+                console.error('Error loading topics:', error);
+            }
+        },
+        
+        getFilteredEmailCount() {
+            return this.filteredEmailCount;
         },
         
         async updateTimeline() {
             const params = new URLSearchParams({
                 person: this.filters.person,
                 start_date: this.filters.startDate,
-                end_date: this.filters.endDate
+                end_date: this.filters.endDate,
+                view_mode: this.viewMode
             });
+            
+            // Add sender filters
+            this.selectedSenders.forEach(sender => params.append('senders', sender));
+            
+            // Add recipient filters
+            this.selectedRecipients.forEach(recipient => params.append('recipients', recipient));
+            
+            // Add topic filters if in topic mode
+            if (this.viewMode === 'topic') {
+                this.selectedMainTopics.forEach(topic => params.append('main_topics', topic));
+                this.selectedSubTopics.forEach(topic => params.append('sub_topics', topic));
+            }
             
             const response = await fetch(`/analytics/api/timeline/{{ customer.id }}?${params}`);
             const data = await response.json();
             
+            this.filteredEmailCount = data.total_emails || 0;
             this.renderTimeline(data);
         },
         
@@ -96,12 +293,72 @@ function timelineApp() {
             }
             
             const traces = [];
+            
+            // Enhanced color palette with more distinct colors
             const colors = {
-                // Customer colors (green shades)
-                customer: ['#059669', '#10B981', '#34D399', '#6EE7B7', '#A7F3D0'],
-                // Our team colors (blue shades)
-                us: ['#1E40AF', '#2563EB', '#3B82F6', '#60A5FA', '#93C5FD']
+                // Customer colors (green/teal shades)
+                customer: ['#059669', '#0891B2', '#10B981', '#06B6D4', '#34D399', '#22D3EE', '#6EE7B7', '#67E8F9'],
+                // Our team colors (blue/indigo shades)
+                us: ['#1E40AF', '#3730A3', '#2563EB', '#4F46E5', '#3B82F6', '#6366F1', '#60A5FA', '#8B5CF6'],
+                // Topic colors (purple/orange shades)
+                topic: ['#7C3AED', '#DC2626', '#EA580C', '#D97706', '#CA8A04', '#65A30D', '#16A34A', '#059669']
             };
+            
+            if (this.viewMode === 'topic') {
+                this.renderTopicTimeline(data, traces, colors);
+            } else {
+                this.renderUserTimeline(data, traces, colors);
+            }
+        },
+        
+        renderTopicTimeline(data, traces, colors) {
+            // Render timeline grouped by topics instead of users
+            if (data.topic_data) {
+                Object.entries(data.topic_data).forEach(([topic, topicData], idx) => {
+                    traces.push({
+                        x: data.time_bins,
+                        y: data.time_bins.map(bin => topicData[bin] || 0),
+                        name: topic,
+                        type: 'scatter',
+                        mode: 'lines+markers',
+                        line: {
+                            color: colors.topic[idx % colors.topic.length],
+                            width: 2
+                        },
+                        marker: {
+                            size: 6,
+                            color: colors.topic[idx % colors.topic.length]
+                        },
+                        hovertemplate: `${topic}: %{y} emails<br>%{x}<extra></extra>`
+                    });
+                });
+            }
+            
+            const layout = {
+                title: `Email Timeline by Topic (${this.filteredEmailCount} emails)`,
+                xaxis: {
+                    title: 'Time Period',
+                    type: 'date'
+                },
+                yaxis: {
+                    title: 'Email Count',
+                    rangemode: 'tozero'
+                },
+                hovermode: 'x unified',
+                showlegend: true,
+                legend: {
+                    x: 1,
+                    y: 1,
+                    xanchor: 'left',
+                    bgcolor: 'rgba(255,255,255,0.8)'
+                },
+                height: 600
+            };
+            
+            Plotly.newPlot('timeline', traces, layout);
+        },
+        
+        renderUserTimeline(data, traces, colors) {
             
             // Create stacked area chart for customer emails
             let customerY = new Array(data.time_bins.length).fill(0);
@@ -200,7 +457,7 @@ function timelineApp() {
             }
             
             const layout = {
-                title: 'Email Communication Volume Timeline',
+                title: `Email Communication Volume Timeline (${this.filteredEmailCount} emails)`,
                 xaxis: {
                     title: 'Time Period',
                     type: data.bin_type === 'week' ? 'category' : 'date',

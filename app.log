@@ -1,0 +1,27 @@
+2025-07-17 11:49:25,632 - werkzeug - WARNING -  * Debugger is active!
+2025-07-17 11:49:25,648 - werkzeug - INFO -  * Debugger PIN: 102-291-346
+2025-07-17 11:49:31,890 - werkzeug - INFO -  * Detected change in '/Users/arlonwilber/Library/CloudStorage/GoogleDrive-awilber@wiredtriangle.com/Shared drives/AW/Personal/Projects/CustomerSuccess/app.py', reloading
+2025-07-17 11:49:32,647 - werkzeug - WARNING -  * Debugger is active!
+2025-07-17 11:49:32,653 - werkzeug - INFO -  * Debugger PIN: 102-291-346
+2025-07-17 12:10:24,927 - werkzeug - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5020
+ * Running on http://192.168.1.16:5020
+2025-07-17 12:10:24,928 - werkzeug - INFO - [33mPress CTRL+C to quit[0m
+2025-07-17 12:10:24,930 - werkzeug - INFO -  * Restarting with stat
+2025-07-17 12:10:25,624 - werkzeug - WARNING -  * Debugger is active!
+2025-07-17 12:10:25,643 - werkzeug - INFO -  * Debugger PIN: 102-291-346
+2025-07-17 12:25:03,374 - werkzeug - INFO - 127.0.0.1 - - [17/Jul/2025 12:25:03] "GET /directories/customer/1 HTTP/1.1" 200 -
+2025-07-17 12:25:04,324 - werkzeug - INFO - 127.0.0.1 - - [17/Jul/2025 12:25:04] "[33mGET /favicon.ico HTTP/1.1[0m" 404 -
+2025-07-17 12:25:12,119 - werkzeug - INFO - 127.0.0.1 - - [17/Jul/2025 12:25:12] "GET /customers/ HTTP/1.1" 200 -
+2025-07-17 12:25:13,648 - werkzeug - INFO - 127.0.0.1 - - [17/Jul/2025 12:25:13] "[35m[1mGET /customers/1 HTTP/1.1[0m" 500 -
+2025-07-17 12:25:13,720 - werkzeug - INFO - 127.0.0.1 - - [17/Jul/2025 12:25:13] "GET /customers/1?__debugger__=yes&cmd=resource&f=style.css HTTP/1.1" 200 -
+2025-07-17 12:25:13,722 - werkzeug - INFO - 127.0.0.1 - - [17/Jul/2025 12:25:13] "GET /customers/1?__debugger__=yes&cmd=resource&f=debugger.js HTTP/1.1" 200 -
+2025-07-17 12:25:13,766 - werkzeug - INFO - 127.0.0.1 - - [17/Jul/2025 12:25:13] "GET /customers/1?__debugger__=yes&cmd=resource&f=console.png&s=pcXysgPDF3C7VpzLYSic HTTP/1.1" 200 -
+2025-07-17 12:25:13,829 - werkzeug - INFO - 127.0.0.1 - - [17/Jul/2025 12:25:13] "GET /customers/1?__debugger__=yes&cmd=resource&f=console.png HTTP/1.1" 200 -
+2025-07-17 12:25:23,530 - werkzeug - INFO - 127.0.0.1 - - [17/Jul/2025 12:25:23] "GET / HTTP/1.1" 200 -
+2025-07-17 12:25:24,892 - werkzeug - INFO - 127.0.0.1 - - [17/Jul/2025 12:25:24] "[35m[1mGET /customers/1 HTTP/1.1[0m" 500 -
+2025-07-17 12:25:24,924 - werkzeug - INFO - 127.0.0.1 - - [17/Jul/2025 12:25:24] "[36mGET /customers/1?__debugger__=yes&cmd=resource&f=style.css HTTP/1.1[0m" 304 -
+2025-07-17 12:25:24,926 - werkzeug - INFO - 127.0.0.1 - - [17/Jul/2025 12:25:24] "[36mGET /customers/1?__debugger__=yes&cmd=resource&f=debugger.js HTTP/1.1[0m" 304 -
+2025-07-17 12:25:24,944 - werkzeug - INFO - 127.0.0.1 - - [17/Jul/2025 12:25:24] "[36mGET /customers/1?__debugger__=yes&cmd=resource&f=console.png&s=pcXysgPDF3C7VpzLYSic HTTP/1.1[0m" 304 -
+2025-07-17 12:26:22,083 - werkzeug - INFO -  * Detected change in '/Users/arlonwilber/Library/CloudStorage/GoogleDrive-awilber@wiredtriangle.com/Shared drives/AW/Personal/Projects/CustomerSuccess/routes/customers.py', reloading

@@ -9,6 +9,11 @@ from models import db, FileReference, DirectoryLink
 import platform
 import pwd
 import stat
+import logging
+
+# Set up logging
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 class DirectoryScanner:
     def __init__(self):
@@ -26,6 +31,8 @@ class DirectoryScanner:
         
     def scan_directory(self, directory_path, customer_id, directory_link_id=None):
         """Scan a directory and catalog all files"""
+        logger.info(f"Starting directory scan for customer {customer_id}: {directory_path}")
+        
         results = {
             'total_files': 0,
             'new_files': 0,
@@ -35,27 +42,47 @@ class DirectoryScanner:
         }
         
         if not os.path.exists(directory_path):
-            results['errors'].append(f"Directory not found: {directory_path}")
+            error_msg = f"Directory not found: {directory_path}"
+            logger.error(error_msg)
+            results['errors'].append(error_msg)
             return results
         
         # Update directory link status
         if directory_link_id:
             dir_link = DirectoryLink.query.get(directory_link_id)
             if dir_link:
+                logger.info(f"Setting directory link {directory_link_id} status to 'scanning'")
                 dir_link.scan_status = 'scanning'
                 dir_link.last_scanned = datetime.utcnow()
                 db.session.commit()
+            else:
+                logger.warning(f"Directory link {directory_link_id} not found in database")
+        
+        # Get initial directory stats
+        try:
+            dir_size = sum(os.path.getsize(os.path.join(dirpath, filename))
+                          for dirpath, dirnames, filenames in os.walk(directory_path)
+                          for filename in filenames)
+            logger.info(f"Directory contains {dir_size / (1024*1024):.2f} MB of data")
+        except Exception as e:
+            logger.warning(f"Could not calculate directory size: {e}")
+            
+        start_time = datetime.utcnow()
         
         try:
+            processed_count = 0
             for root, dirs, files in os.walk(directory_path):
                 # Skip hidden directories
                 dirs[:] = [d for d in dirs if not d.startswith('.')]
+                
+                logger.info(f"Processing directory: {root} (contains {len(files)} files)")
                 
                 for filename in files:
                     if filename.startswith('.'):
                         continue
                         
                     filepath = os.path.join(root, filename)
+                    processed_count += 1
                     
                     try:
                         file_info = self._process_file(filepath, customer_id, directory_path)
@@ -65,23 +92,49 @@ class DirectoryScanner:
                             
                             if file_info.get('is_new'):
                                 results['new_files'] += 1
+                                logger.debug(f"New file detected: {filepath}")
                             elif file_info.get('is_updated'):
                                 results['updated_files'] += 1
+                                logger.debug(f"Updated file detected: {filepath}")
+                                
+                            # Log progress every 100 files
+                            if processed_count % 100 == 0:
+                                logger.info(f"Processed {processed_count} files. Stats: {results['total_files']} valid, {results['new_files']} new, {results['updated_files']} updated")
                                 
                     except Exception as e:
-                        results['errors'].append(f"Error processing {filepath}: {str(e)}")
+                        error_msg = f"Error processing {filepath}: {str(e)}"
+                        logger.error(error_msg)
+                        results['errors'].append(error_msg)
         
         except Exception as e:
-            results['errors'].append(f"Error scanning directory: {str(e)}")
+            error_msg = f"Error scanning directory: {str(e)}"
+            logger.error(error_msg)
+            results['errors'].append(error_msg)
+        
+        # Calculate scan duration
+        scan_duration = (datetime.utcnow() - start_time).total_seconds()
+        logger.info(f"Directory scan completed in {scan_duration:.2f} seconds")
+        logger.info(f"Scan results: {results['total_files']} total files, {results['new_files']} new, {results['updated_files']} updated, {len(results['errors'])} errors")
         
         # Update directory link with results
         if directory_link_id:
             dir_link = DirectoryLink.query.get(directory_link_id)
             if dir_link:
+                logger.info(f"Updating directory link {directory_link_id} status to 'completed'")
                 dir_link.scan_status = 'completed'
                 dir_link.file_count = results['total_files']
                 dir_link.total_size = results['total_size']
                 db.session.commit()
+            else:
+                logger.warning(f"Directory link {directory_link_id} not found for completion update")
+        
+        # Log any errors that occurred
+        if results['errors']:
+            logger.warning(f"Scan completed with {len(results['errors'])} errors:")
+            for error in results['errors'][:10]:  # Log first 10 errors
+                logger.warning(f"  - {error}")
+            if len(results['errors']) > 10:
+                logger.warning(f"  ... and {len(results['errors']) - 10} more errors")
         
         return results
     

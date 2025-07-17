@@ -1,0 +1,508 @@
+{% extends "base.html" %}
+
+{% block title %}Embeddings - {{ customer.name }} - CustomerSuccess{% endblock %}
+
+{% block content %}
+<div x-data="embeddingsApp()" x-init="init()">
+    <div class="mb-6">
+        <h1 class="text-2xl font-bold text-gray-900">Email Embeddings - {{ customer.name }}</h1>
+        <p class="mt-1 text-sm text-gray-600">Generate embeddings for email analysis and topic modeling</p>
+    </div>
+
+    <!-- Two-column layout -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        <!-- Left Panel: Filters and Controls -->
+        <div class="lg:col-span-1">
+            <div class="bg-white shadow rounded-lg p-6 space-y-6">
+                
+                <!-- Embedding Method Selection -->
+                <div>
+                    <h3 class="text-lg font-medium text-gray-900 mb-3">Embedding Method</h3>
+                    <div class="space-y-2">
+                        <label class="flex items-center">
+                            <input type="radio" x-model="embeddingMethod" value="openai" class="mr-2">
+                            <span class="text-sm">OpenAI API</span>
+                            <span class="ml-2 text-xs text-gray-500">(High quality, semantic understanding)</span>
+                        </label>
+                        <label class="flex items-center">
+                            <input type="radio" x-model="embeddingMethod" value="tfidf" class="mr-2">
+                            <span class="text-sm">TF-IDF</span>
+                            <span class="ml-2 text-xs text-gray-500">(Fast, free, local processing)</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Sender Filter -->
+                <div>
+                    <h3 class="text-lg font-medium text-gray-900 mb-3">Sender Filter</h3>
+                    <div class="max-h-40 overflow-y-auto border rounded p-2">
+                        <template x-for="sender in senders" :key="sender">
+                            <label class="flex items-center py-1">
+                                <input type="checkbox" 
+                                       :value="sender" 
+                                       x-model="selectedSenders" 
+                                       @change="updateStats()"
+                                       class="mr-2">
+                                <span class="text-sm" x-text="sender"></span>
+                            </label>
+                        </template>
+                    </div>
+                </div>
+
+                <!-- Recipient Filter -->
+                <div>
+                    <h3 class="text-lg font-medium text-gray-900 mb-3">Recipient Filter</h3>
+                    <div class="max-h-40 overflow-y-auto border rounded p-2">
+                        <template x-for="recipient in recipients" :key="recipient">
+                            <label class="flex items-center py-1">
+                                <input type="checkbox" 
+                                       :value="recipient" 
+                                       x-model="selectedRecipients" 
+                                       @change="updateStats()"
+                                       class="mr-2">
+                                <span class="text-sm" x-text="recipient"></span>
+                            </label>
+                        </template>
+                    </div>
+                </div>
+
+                <!-- Quick Filters -->
+                <div>
+                    <h3 class="text-lg font-medium text-gray-900 mb-3">Quick Filters</h3>
+                    <div class="space-y-2">
+                        <button @click="selectOurDomains()" 
+                                class="w-full text-left px-3 py-2 bg-blue-50 text-blue-700 rounded text-sm hover:bg-blue-100">
+                            Select Our Domains Only
+                        </button>
+                        <button @click="selectAll()" 
+                                class="w-full text-left px-3 py-2 bg-gray-50 text-gray-700 rounded text-sm hover:bg-gray-100">
+                            Select All
+                        </button>
+                        <button @click="clearAll()" 
+                                class="w-full text-left px-3 py-2 bg-red-50 text-red-700 rounded text-sm hover:bg-red-100">
+                            Clear All
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Topics Filter -->
+                <div x-show="topics.main_topics.length > 0 || topics.sub_topics.length > 0">
+                    <h3 class="text-lg font-medium text-gray-900 mb-3">Topics Filter</h3>
+                    
+                    <!-- Main Topics -->
+                    <div x-show="topics.main_topics.length > 0" class="mb-4">
+                        <h4 class="text-sm font-medium text-gray-700 mb-2">Main Topics</h4>
+                        <div class="max-h-32 overflow-y-auto border rounded p-2">
+                            <template x-for="topic in topics.main_topics" :key="topic.name">
+                                <label class="flex items-center py-1">
+                                    <input type="checkbox" 
+                                           :value="topic.name" 
+                                           x-model="selectedMainTopics" 
+                                           @change="updateStats()"
+                                           class="mr-2">
+                                    <span class="text-sm" x-text="topic.name"></span>
+                                    <span class="text-xs text-gray-500 ml-1" x-text="'(' + topic.count + ')'"></span>
+                                </label>
+                            </template>
+                        </div>
+                    </div>
+
+                    <!-- Sub Topics -->
+                    <div x-show="topics.sub_topics.length > 0">
+                        <h4 class="text-sm font-medium text-gray-700 mb-2">Sub Topics</h4>
+                        <div class="max-h-32 overflow-y-auto border rounded p-2">
+                            <template x-for="topic in topics.sub_topics" :key="topic.name">
+                                <label class="flex items-center py-1">
+                                    <input type="checkbox" 
+                                           :value="topic.name" 
+                                           x-model="selectedSubTopics" 
+                                           @change="updateStats()"
+                                           class="mr-2">
+                                    <span class="text-sm" x-text="topic.name"></span>
+                                    <span class="text-xs text-gray-500 ml-1" x-text="'(' + topic.count + ')'"></span>
+                                </label>
+                            </template>
+                        </div>
+                    </div>
+
+                    <!-- Topic Actions -->
+                    <div class="mt-3 space-y-2">
+                        <button @click="extractTopics()" 
+                                :disabled="processing"
+                                class="w-full text-left px-3 py-2 bg-green-50 text-green-700 rounded text-sm hover:bg-green-100 disabled:opacity-50">
+                            Extract Topics from Embeddings
+                        </button>
+                        <button @click="selectAllTopics()" 
+                                class="w-full text-left px-3 py-2 bg-gray-50 text-gray-700 rounded text-sm hover:bg-gray-100">
+                            Select All Topics
+                        </button>
+                        <button @click="clearAllTopics()" 
+                                class="w-full text-left px-3 py-2 bg-red-50 text-red-700 rounded text-sm hover:bg-red-100">
+                            Clear All Topics
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Panel: Year/Month Selection and Processing -->
+        <div class="lg:col-span-2">
+            <div class="bg-white shadow rounded-lg p-6">
+                
+                <!-- Processing Status -->
+                <div x-show="currentTask" class="mb-6 p-4 bg-blue-50 rounded-lg">
+                    <div class="flex justify-between items-center mb-2">
+                        <h3 class="text-lg font-medium text-blue-900">Processing Status</h3>
+                        <span class="text-sm text-blue-600" x-text="currentTask?.status"></span>
+                    </div>
+                    <div class="w-full bg-blue-200 rounded-full h-2 mb-2">
+                        <div class="bg-blue-600 h-2 rounded-full transition-all duration-300" 
+                             :style="`width: ${currentTask?.progress || 0}%`"></div>
+                    </div>
+                    <div class="text-sm text-blue-800">
+                        <span x-text="currentTask?.processed || 0"></span> processed, 
+                        <span x-text="currentTask?.errors || 0"></span> errors, 
+                        <span x-text="currentTask?.skipped || 0"></span> skipped
+                    </div>
+                </div>
+
+                <!-- Year/Month Selection -->
+                <div class="mb-6">
+                    <h3 class="text-lg font-medium text-gray-900 mb-4">Select Time Period</h3>
+                    
+                    <div class="space-y-2">
+                        <template x-for="(yearData, year) in emailStats" :key="year">
+                            <div class="border rounded-lg">
+                                <!-- Year Header -->
+                                <div class="flex items-center justify-between p-3 bg-gray-50 cursor-pointer"
+                                     @click="toggleYear(year)">
+                                    <div class="flex items-center">
+                                        <svg class="w-4 h-4 mr-2 transition-transform" 
+                                             :class="expandedYears.includes(year) ? 'rotate-90' : ''"
+                                             fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                                        </svg>
+                                        <span class="font-medium" x-text="year"></span>
+                                    </div>
+                                    <div class="text-sm text-gray-600">
+                                        <span x-text="yearData.total"></span> total, 
+                                        <span x-text="yearData.with_embeddings"></span> with embeddings
+                                    </div>
+                                    <div class="flex space-x-2">
+                                        <button @click.stop="processYear(year)" 
+                                                :disabled="processing"
+                                                class="px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 disabled:opacity-50">
+                                            Process Year
+                                        </button>
+                                    </div>
+                                </div>
+                                
+                                <!-- Month Details -->
+                                <div x-show="expandedYears.includes(year)" class="border-t">
+                                    <template x-for="(monthData, month) in yearData.months" :key="month">
+                                        <div class="flex items-center justify-between p-3 border-b last:border-b-0">
+                                            <div class="flex items-center">
+                                                <span class="w-4"></span>
+                                                <span class="text-sm" x-text="getMonthName(month)"></span>
+                                            </div>
+                                            <div class="text-sm text-gray-600">
+                                                <span x-text="monthData.total"></span> total, 
+                                                <span x-text="monthData.with_embeddings"></span> with embeddings
+                                            </div>
+                                            <div class="flex space-x-2">
+                                                <button @click="processMonth(year, month)" 
+                                                        :disabled="processing"
+                                                        class="px-3 py-1 bg-green-600 text-white rounded text-sm hover:bg-green-700 disabled:opacity-50">
+                                                    Process Month
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </template>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+
+                <!-- Processing Controls -->
+                <div class="flex justify-between items-center">
+                    <div class="text-sm text-gray-600">
+                        <span x-text="getTotalEmails()"></span> total emails matching filters
+                    </div>
+                    <div class="space-x-2">
+                        <button @click="processAll()" 
+                                :disabled="processing"
+                                class="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 disabled:opacity-50">
+                            Process All Filtered
+                        </button>
+                        <button x-show="currentTask" 
+                                @click="cancelProcessing()"
+                                class="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700">
+                            Cancel
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function embeddingsApp() {
+    return {
+        embeddingMethod: 'openai',
+        senders: [],
+        recipients: [],
+        selectedSenders: [],
+        selectedRecipients: [],
+        topics: { main_topics: [], sub_topics: [] },
+        selectedMainTopics: [],
+        selectedSubTopics: [],
+        emailStats: {},
+        expandedYears: [],
+        processing: false,
+        currentTask: null,
+        taskCheckInterval: null,
+        
+        async init() {
+            await this.loadEmailAddresses();
+            this.selectOurDomains();
+            await this.loadTopics();
+            await this.updateStats();
+        },
+        
+        async loadEmailAddresses() {
+            try {
+                const response = await fetch(`/embeddings/api/customer/{{ customer.id }}/email-addresses`);
+                const data = await response.json();
+                this.senders = data.senders;
+                this.recipients = data.recipients;
+            } catch (error) {
+                console.error('Error loading email addresses:', error);
+            }
+        },
+        
+        selectOurDomains() {
+            const ourDomains = ['wiredtriangle.com', 'knewvantage.com'];
+            this.selectedSenders = this.senders.filter(sender => 
+                ourDomains.some(domain => sender.includes('@' + domain))
+            );
+            this.selectedRecipients = this.recipients.filter(recipient => 
+                ourDomains.some(domain => recipient.includes('@' + domain))
+            );
+            this.updateStats();
+        },
+        
+        selectAll() {
+            this.selectedSenders = [...this.senders];
+            this.selectedRecipients = [...this.recipients];
+            this.updateStats();
+        },
+        
+        clearAll() {
+            this.selectedSenders = [];
+            this.selectedRecipients = [];
+            this.updateStats();
+        },
+        
+        async updateStats() {
+            try {
+                const params = new URLSearchParams();
+                this.selectedSenders.forEach(sender => params.append('senders', sender));
+                this.selectedRecipients.forEach(recipient => params.append('recipients', recipient));
+                
+                const response = await fetch(`/embeddings/api/customer/{{ customer.id }}/stats?${params}`);
+                this.emailStats = await response.json();
+            } catch (error) {
+                console.error('Error updating stats:', error);
+            }
+        },
+        
+        toggleYear(year) {
+            const index = this.expandedYears.indexOf(year);
+            if (index > -1) {
+                this.expandedYears.splice(index, 1);
+            } else {
+                this.expandedYears.push(year);
+            }
+        },
+        
+        getMonthName(month) {
+            const months = [
+                'January', 'February', 'March', 'April', 'May', 'June',
+                'July', 'August', 'September', 'October', 'November', 'December'
+            ];
+            return months[parseInt(month) - 1];
+        },
+        
+        getTotalEmails() {
+            let total = 0;
+            Object.values(this.emailStats).forEach(yearData => {
+                total += yearData.total;
+            });
+            return total;
+        },
+        
+        async processYear(year) {
+            await this.startProcessing({ year: parseInt(year) });
+        },
+        
+        async processMonth(year, month) {
+            await this.startProcessing({ year: parseInt(year), month: parseInt(month) });
+        },
+        
+        async processAll() {
+            await this.startProcessing({});
+        },
+        
+        async startProcessing(dateFilter) {
+            if (this.processing) return;
+            
+            this.processing = true;
+            
+            try {
+                const payload = {
+                    ...dateFilter,
+                    senders: this.selectedSenders,
+                    recipients: this.selectedRecipients,
+                    embedding_method: this.embeddingMethod
+                };
+                
+                const response = await fetch(`/embeddings/api/customer/{{ customer.id }}/process`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(payload)
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    this.currentTask = { task_id: result.task_id, status: 'starting', progress: 0 };
+                    this.startTaskMonitoring(result.task_id);
+                } else {
+                    alert('Error: ' + result.error);
+                    this.processing = false;
+                }
+            } catch (error) {
+                console.error('Error starting processing:', error);
+                alert('Error starting processing');
+                this.processing = false;
+            }
+        },
+        
+        startTaskMonitoring(taskId) {
+            this.taskCheckInterval = setInterval(async () => {
+                try {
+                    const response = await fetch(`/embeddings/api/task/${taskId}/status`);
+                    const task = await response.json();
+                    
+                    this.currentTask = task;
+                    
+                    if (task.status === 'completed' || task.status === 'error' || task.status === 'cancelled') {
+                        clearInterval(this.taskCheckInterval);
+                        this.processing = false;
+                        
+                        if (task.status === 'completed') {
+                            await this.updateStats();
+                            alert(`Processing completed! ${task.processed} emails processed, ${task.errors} errors, ${task.skipped} skipped.`);
+                        } else if (task.status === 'error') {
+                            alert('Processing failed: ' + task.error);
+                        }
+                        
+                        // Clear task after a delay
+                        setTimeout(() => {
+                            this.currentTask = null;
+                        }, 5000);
+                    }
+                } catch (error) {
+                    console.error('Error checking task status:', error);
+                }
+            }, 1000);
+        },
+        
+        async cancelProcessing() {
+            if (this.currentTask) {
+                try {
+                    await fetch(`/embeddings/api/task/${this.currentTask.task_id}/cancel`, {
+                        method: 'POST'
+                    });
+                    clearInterval(this.taskCheckInterval);
+                    this.processing = false;
+                    this.currentTask = null;
+                } catch (error) {
+                    console.error('Error cancelling task:', error);
+                }
+            }
+        },
+        
+        async loadTopics() {
+            try {
+                const response = await fetch(`/embeddings/api/customer/{{ customer.id }}/topics`);
+                const data = await response.json();
+                this.topics = data;
+                
+                // Pre-select all topics by default
+                this.selectedMainTopics = this.topics.main_topics.map(topic => topic.name);
+                this.selectedSubTopics = this.topics.sub_topics.map(topic => topic.name);
+            } catch (error) {
+                console.error('Error loading topics:', error);
+            }
+        },
+        
+        async extractTopics() {
+            if (this.processing) return;
+            
+            this.processing = true;
+            
+            try {
+                const response = await fetch(`/embeddings/api/customer/{{ customer.id }}/extract-topics`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        max_main_topics: 10,
+                        max_sub_topics: 20
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    this.topics = result;
+                    
+                    // Pre-select all topics by default
+                    this.selectedMainTopics = this.topics.main_topics.map(topic => topic.name);
+                    this.selectedSubTopics = this.topics.sub_topics.map(topic => topic.name);
+                    
+                    await this.updateStats();
+                    alert(`Topics extracted! ${result.main_topics.length} main topics, ${result.sub_topics.length} sub topics found.`);
+                } else {
+                    alert('Error extracting topics: ' + result.error);
+                }
+            } catch (error) {
+                console.error('Error extracting topics:', error);
+                alert('Error extracting topics');
+            } finally {
+                this.processing = false;
+            }
+        },
+        
+        selectAllTopics() {
+            this.selectedMainTopics = this.topics.main_topics.map(topic => topic.name);
+            this.selectedSubTopics = this.topics.sub_topics.map(topic => topic.name);
+            this.updateStats();
+        },
+        
+        clearAllTopics() {
+            this.selectedMainTopics = [];
+            this.selectedSubTopics = [];
+            this.updateStats();
+        }
+    }
+}
+</script>
+{% endblock %}

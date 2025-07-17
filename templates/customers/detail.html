@@ -30,6 +30,11 @@
                     class="whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm">
                 Timeline
             </button>
+            <button @click="activeTab = 'embeddings'"
+                    :class="activeTab === 'embeddings' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
+                    class="whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm">
+                Embeddings
+            </button>
             <button @click="activeTab = 'files'"
                     :class="activeTab === 'files' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
                     class="whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm">
@@ -39,6 +44,11 @@
                     :class="activeTab === 'insights' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
                     class="whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm">
                 Insights
+            </button>
+            <button @click="activeTab = 'topics'"
+                    :class="activeTab === 'topics' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
+                    class="whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm">
+                Topics
             </button>
         </nav>
     </div>
@@ -224,8 +234,25 @@
         </div>
     </div>
 
+    <!-- Embeddings Tab -->
+    <div x-show="activeTab === 'embeddings'" x-cloak>
+        <div class="bg-white shadow rounded-lg p-6">
+            <a href="{{ url_for('embeddings.customer_embeddings', customer_id=customer.id) }}" 
+               class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700">
+                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path>
+                </svg>
+                Generate Email Embeddings
+            </a>
+            <p class="mt-2 text-sm text-gray-600">
+                Process email content to create embeddings for AI analysis and topic modeling.
+            </p>
+        </div>
+    </div>
+
     <!-- Files Tab -->
-    <div x-show="activeTab === 'files'" x-cloak>
+    <div x-show="activeTab === 'files'" x-cloak 
+         x-data="directoryStatus({{ customer.id }})">
         <div class="bg-white shadow rounded-lg p-6">
             <div class="mb-4">
                 <a href="{{ url_for('drive.browse', customer_id=customer.id) }}" 
@@ -238,8 +265,104 @@
                 </a>
             </div>
             
+            <!-- Directory Status Section -->
+            <div class="mb-6">
+                <h4 class="text-sm font-medium text-gray-900 mb-3">Directory Status</h4>
+                {% if directories %}
+                    <div class="space-y-3">
+                        {% for dir in directories %}
+                            <div class="border rounded-lg p-4 bg-gray-50">
+                                <div class="flex items-center justify-between mb-2">
+                                    <div>
+                                        <h5 class="font-medium text-gray-900">{{ dir.name }}</h5>
+                                        <p class="text-sm text-gray-500">
+                                            {% if dir.link_type == 'drive' %}
+                                                Google Drive Folder
+                                            {% else %}
+                                                Local Directory: {{ dir.path }}
+                                            {% endif %}
+                                        </p>
+                                    </div>
+                                    <div class="flex items-center space-x-2">
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
+                                              :class="getStatusClass('{{ dir.scan_status }}')">
+                                            <template x-if="scanProgress['{{ dir.id }}']">
+                                                <span x-text="scanProgress['{{ dir.id }}'].status"></span>
+                                            </template>
+                                            <template x-if="!scanProgress['{{ dir.id }}']">
+                                                <span>{{ dir.scan_status }}</span>
+                                            </template>
+                                        </span>
+                                        <form action="{{ url_for('directories.rescan_directory', directory_id=dir.id) }}" 
+                                              method="POST" class="inline">
+                                            <button type="submit" 
+                                                    class="text-indigo-600 hover:text-indigo-900 text-sm">
+                                                Rescan
+                                            </button>
+                                        </form>
+                                    </div>
+                                </div>
+                                
+                                <!-- Progress Bar -->
+                                <template x-if="scanProgress['{{ dir.id }}'] && scanProgress['{{ dir.id }}'].status === 'scanning'">
+                                    <div class="mb-2">
+                                        <div class="flex justify-between text-sm text-gray-600 mb-1">
+                                            <span>Scanning files...</span>
+                                            <span x-text="scanProgress['{{ dir.id }}'].progress.current + ' / ' + scanProgress['{{ dir.id }}'].progress.total"></span>
+                                        </div>
+                                        <div class="w-full bg-gray-200 rounded-full h-2">
+                                            <div class="bg-indigo-600 h-2 rounded-full transition-all duration-300" 
+                                                 :style="'width: ' + (scanProgress['{{ dir.id }}'].progress.total > 0 ? (scanProgress['{{ dir.id }}'].progress.current / scanProgress['{{ dir.id }}'].progress.total * 100) : 0) + '%'"></div>
+                                        </div>
+                                        <p class="text-xs text-gray-500 mt-1" x-text="scanProgress['{{ dir.id }}'].progress.message"></p>
+                                    </div>
+                                </template>
+                                
+                                <!-- Directory Stats -->
+                                <div class="grid grid-cols-2 gap-4 text-sm">
+                                    <div>
+                                        <span class="text-gray-500">Files:</span>
+                                        <span class="font-medium">
+                                            <template x-if="scanProgress['{{ dir.id }}'] && scanProgress['{{ dir.id }}'].status === 'completed'">
+                                                <span x-text="scanProgress['{{ dir.id }}'].results.files_processed"></span>
+                                            </template>
+                                            <template x-if="!scanProgress['{{ dir.id }}'] || scanProgress['{{ dir.id }}'].status !== 'completed'">
+                                                <span>{{ dir.file_count }}</span>
+                                            </template>
+                                        </span>
+                                    </div>
+                                    <div>
+                                        <span class="text-gray-500">Size:</span>
+                                        <span class="font-medium">
+                                            <template x-if="scanProgress['{{ dir.id }}'] && scanProgress['{{ dir.id }}'].status === 'completed'">
+                                                <span x-text="formatBytes(scanProgress['{{ dir.id }}'].results.total_size_bytes)"></span>
+                                            </template>
+                                            <template x-if="!scanProgress['{{ dir.id }}'] || scanProgress['{{ dir.id }}'].status !== 'completed'">
+                                                <span>{{ "%.1f MB"|format((dir.total_size or 0) / 1024 / 1024) }}</span>
+                                            </template>
+                                        </span>
+                                    </div>
+                                </div>
+                                
+                                <!-- Last Scanned -->
+                                <div class="text-xs text-gray-500 mt-2">
+                                    {% if dir.last_scanned %}
+                                        Last scanned: {{ dir.last_scanned|datetime }}
+                                    {% else %}
+                                        Never scanned
+                                    {% endif %}
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <p class="text-gray-500">No directories linked yet.</p>
+                {% endif %}
+            </div>
+            
+            <!-- Linked Files Section -->
             {% if files %}
-                <h4 class="text-sm font-medium text-gray-900 mb-3">Linked Files</h4>
+                <h4 class="text-sm font-medium text-gray-900 mb-3">Linked Files ({{ files|length }})</h4>
                 <div class="space-y-3">
                     {% for file in files %}
                         <div class="flex items-center justify-between p-3 border rounded-lg">
@@ -303,5 +426,228 @@
             </div>
         </div>
     </div>
+
+    <!-- Topics Tab -->
+    <div x-show="activeTab === 'topics'" x-cloak>
+        <div class="bg-white shadow rounded-lg p-6">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-lg font-medium text-gray-900">Topic Management</h3>
+                <a href="{{ url_for('topics.customer_topics', customer_id=customer.id) }}" 
+                   class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700">
+                    <svg class="mr-2 -ml-1 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                    </svg>
+                    Full Topic Manager
+                </a>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Topic Summary -->
+                <div class="border rounded-lg p-4">
+                    <h4 class="font-medium text-gray-900 mb-3">Topic Overview</h4>
+                    <div id="topic-summary" class="space-y-2">
+                        <div class="flex justify-between text-sm">
+                            <span class="text-gray-600">Total Topics:</span>
+                            <span id="total-topics" class="font-medium">Loading...</span>
+                        </div>
+                        <div class="flex justify-between text-sm">
+                            <span class="text-gray-600">Classified Emails:</span>
+                            <span id="classified-emails" class="font-medium">Loading...</span>
+                        </div>
+                        <div class="flex justify-between text-sm">
+                            <span class="text-gray-600">Classification Rate:</span>
+                            <span id="classification-rate" class="font-medium">Loading...</span>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-4">
+                        <button onclick="runQuickClassification()" 
+                                class="w-full inline-flex justify-center items-center px-3 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                            <svg class="mr-2 -ml-1 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                            </svg>
+                            Quick Auto-Classify
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Recent Topics -->
+                <div class="border rounded-lg p-4">
+                    <h4 class="font-medium text-gray-900 mb-3">Recent Topics</h4>
+                    <div id="recent-topics" class="space-y-2">
+                        <div class="text-sm text-gray-500">Loading topics...</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="mt-6 p-4 bg-gray-50 rounded-lg">
+                <h4 class="font-medium text-gray-900 mb-2">Topic Features</h4>
+                <ul class="space-y-1 text-sm text-gray-600">
+                    <li>• Create hierarchical topic structures (Main → Sub → Micro)</li>
+                    <li>• Automatically classify emails using keywords and AI</li>
+                    <li>• Track topic relationships and email assignments</li>
+                    <li>• View topic analytics and usage statistics</li>
+                    <li>• Manage topic keywords and classification rules</li>
+                </ul>
+            </div>
+        </div>
+    </div>
 </div>
+
+<script>
+// Load topic summary data when topics tab is activated
+document.addEventListener('DOMContentLoaded', function() {
+    // Load topic summary if topics tab is selected
+    if (window.location.hash === '#topics') {
+        loadTopicSummary();
+    }
+});
+
+async function loadTopicSummary() {
+    try {
+        const response = await fetch(`/topics/api/customer/{{ customer.id }}/stats`);
+        const stats = await response.json();
+        
+        document.getElementById('total-topics').textContent = stats.total_topics || 0;
+        document.getElementById('classified-emails').textContent = stats.classified_emails || 0;
+        document.getElementById('classification-rate').textContent = (stats.classification_rate || 0) + '%';
+        
+        // Load recent topics
+        const topicsResponse = await fetch(`/topics/api/customer/{{ customer.id }}/topics`);
+        const topics = await topicsResponse.json();
+        
+        const recentTopicsContainer = document.getElementById('recent-topics');
+        
+        if (topics.main_topics && topics.main_topics.length > 0) {
+            recentTopicsContainer.innerHTML = topics.main_topics.slice(0, 5).map(topic => `
+                <div class="flex justify-between items-center p-2 bg-white rounded border">
+                    <div class="flex items-center">
+                        <div class="w-3 h-3 rounded-full mr-2" style="background-color: ${topic.color || '#666'}"></div>
+                        <span class="text-sm font-medium">${topic.name}</span>
+                    </div>
+                    <span class="text-xs text-gray-500">${topic.email_count || 0} emails</span>
+                </div>
+            `).join('');
+        } else {
+            recentTopicsContainer.innerHTML = '<div class="text-sm text-gray-500">No topics created yet</div>';
+        }
+        
+    } catch (error) {
+        console.error('Error loading topic summary:', error);
+        document.getElementById('total-topics').textContent = 'Error';
+        document.getElementById('classified-emails').textContent = 'Error';
+        document.getElementById('classification-rate').textContent = 'Error';
+    }
+}
+
+async function runQuickClassification() {
+    const button = event.target;
+    const originalText = button.innerHTML;
+    
+    button.innerHTML = '<svg class="animate-spin mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>Running...';
+    button.disabled = true;
+    
+    try {
+        const response = await fetch(`/topics/api/customer/{{ customer.id }}/auto-classify`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                limit: 50,
+                algorithms: ['keyword', 'embedding']
+            })
+        });
+        
+        if (response.ok) {
+            const result = await response.json();
+            alert(`Classification completed! Classified ${result.classified_count} emails.`);
+            loadTopicSummary(); // Refresh the summary
+        } else {
+            const error = await response.json();
+            alert(`Error: ${error.error}`);
+        }
+    } catch (error) {
+        console.error('Error in quick classification:', error);
+        alert('Error running classification');
+    } finally {
+        button.innerHTML = originalText;
+        button.disabled = false;
+    }
+}
+
+// Add event listener for tab switching
+document.addEventListener('click', function(e) {
+    if (e.target.textContent === 'Topics') {
+        loadTopicSummary();
+    }
+});
+
+// Directory Status Alpine.js component
+function directoryStatus(customerId) {
+    return {
+        scanProgress: {},
+        pollInterval: null,
+        
+        init() {
+            this.startPolling();
+        },
+        
+        startPolling() {
+            this.pollProgress();
+            this.pollInterval = setInterval(() => {
+                this.pollProgress();
+            }, 2000); // Poll every 2 seconds
+        },
+        
+        async pollProgress() {
+            try {
+                // Get all directory IDs from the directories in the template
+                const directoryIds = [];
+                {% for dir in directories %}
+                    directoryIds.push({{ dir.id }});
+                {% endfor %}
+                
+                // Fetch progress for each directory
+                for (const dirId of directoryIds) {
+                    const response = await fetch(`/directories/api/scan-progress/${dirId}`);
+                    if (response.ok) {
+                        const data = await response.json();
+                        this.scanProgress[dirId] = data;
+                    }
+                }
+            } catch (error) {
+                console.error('Error fetching scan progress:', error);
+            }
+        },
+        
+        getStatusClass(status) {
+            const classes = {
+                'pending': 'bg-yellow-100 text-yellow-800',
+                'scanning': 'bg-blue-100 text-blue-800',
+                'completed': 'bg-green-100 text-green-800',
+                'error': 'bg-red-100 text-red-800',
+                'failed': 'bg-red-100 text-red-800'
+            };
+            return classes[status] || 'bg-gray-100 text-gray-800';
+        },
+        
+        formatBytes(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+        },
+        
+        destroy() {
+            if (this.pollInterval) {
+                clearInterval(this.pollInterval);
+            }
+        }
+    };
+}
+</script>
+
 {% endblock %}

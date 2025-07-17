@@ -1,0 +1,268 @@
+{% extends "base.html" %}
+
+{% block title %}Activity Logs - CustomerSuccess{% endblock %}
+
+{% block content %}
+<div x-data="logsManager()" x-init="init()">
+    <div class="mb-6">
+        <h1 class="text-2xl font-bold text-gray-900">Activity Logs</h1>
+        <p class="mt-1 text-sm text-gray-600">Monitor system access and user actions</p>
+    </div>
+
+    <!-- Controls -->
+    <div class="mb-6 flex flex-wrap items-center justify-between gap-4">
+        <div class="flex items-center space-x-4">
+            <!-- Filter buttons -->
+            <div class="flex space-x-2">
+                <button @click="setFilter('all')" 
+                        :class="filter === 'all' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'"
+                        class="px-3 py-1 rounded text-sm">All</button>
+                <button @click="setFilter('auth')" 
+                        :class="filter === 'auth' ? 'bg-green-600 text-white' : 'bg-gray-200 text-gray-700'"
+                        class="px-3 py-1 rounded text-sm">Auth</button>
+                <button @click="setFilter('errors')" 
+                        :class="filter === 'errors' ? 'bg-red-600 text-white' : 'bg-gray-200 text-gray-700'"
+                        class="px-3 py-1 rounded text-sm">Errors</button>
+                <button @click="setFilter('uploads')" 
+                        :class="filter === 'uploads' ? 'bg-purple-600 text-white' : 'bg-gray-200 text-gray-700'"
+                        class="px-3 py-1 rounded text-sm">Uploads</button>
+            </div>
+            
+            <!-- Auto-refresh toggle -->
+            <label class="flex items-center">
+                <input type="checkbox" x-model="autoRefresh" @change="toggleAutoRefresh()" class="mr-2">
+                <span class="text-sm text-gray-600">Auto-refresh</span>
+            </label>
+        </div>
+        
+        <div class="flex space-x-2">
+            <button @click="refreshLogs()" 
+                    class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm">
+                Refresh
+            </button>
+            <button @click="exportLogs()" 
+                    class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 text-sm">
+                Export
+            </button>
+            <button @click="clearLogs()" 
+                    class="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 text-sm">
+                Clear
+            </button>
+        </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        <div class="bg-white p-4 rounded-lg shadow">
+            <div class="text-2xl font-bold text-blue-600" x-text="stats.total"></div>
+            <div class="text-sm text-gray-600">Total Entries</div>
+        </div>
+        <div class="bg-white p-4 rounded-lg shadow">
+            <div class="text-2xl font-bold text-green-600" x-text="stats.unique_ips"></div>
+            <div class="text-sm text-gray-600">Unique IPs</div>
+        </div>
+        <div class="bg-white p-4 rounded-lg shadow">
+            <div class="text-2xl font-bold text-red-600" x-text="stats.errors"></div>
+            <div class="text-sm text-gray-600">Errors</div>
+        </div>
+        <div class="bg-white p-4 rounded-lg shadow">
+            <div class="text-2xl font-bold text-purple-600" x-text="stats.auth_events"></div>
+            <div class="text-sm text-gray-600">Auth Events</div>
+        </div>
+    </div>
+
+    <!-- Logs Table -->
+    <div class="bg-white shadow rounded-lg overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Time</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">IP Address</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Details</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    <template x-for="log in filteredLogs" :key="log.timestamp">
+                        <tr class="hover:bg-gray-50">
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                <span x-text="formatTime(log.timestamp)"></span>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                <span x-text="log.ip_address"></span>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                                <span x-text="formatLocation(log.geolocation)"></span>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <span x-text="formatAction(log)" 
+                                      :class="getActionColor(log)" 
+                                      class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full"></span>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <span x-text="log.status_code || 'N/A'" 
+                                      :class="getStatusColor(log.status_code)" 
+                                      class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full"></span>
+                            </td>
+                            <td class="px-6 py-4 text-sm text-gray-600 max-w-xs truncate">
+                                <span x-text="formatDetails(log)"></span>
+                            </td>
+                        </tr>
+                    </template>
+                </tbody>
+            </table>
+        </div>
+        
+        <div x-show="filteredLogs.length === 0" class="p-8 text-center text-gray-500">
+            No logs found matching current filter.
+        </div>
+    </div>
+</div>
+
+<script>
+function logsManager() {
+    return {
+        logs: {{ logs | tojsonfilter | safe }},
+        filter: 'all',
+        autoRefresh: false,
+        refreshInterval: null,
+        
+        init() {
+            this.calculateStats();
+        },
+        
+        get filteredLogs() {
+            if (this.filter === 'all') return this.logs;
+            
+            return this.logs.filter(log => {
+                switch(this.filter) {
+                    case 'auth':
+                        return log.endpoint && (log.endpoint.includes('auth') || log.action === 'LOGIN' || log.action === 'LOGOUT');
+                    case 'errors':
+                        return log.status_code >= 400;
+                    case 'uploads':
+                        return log.endpoint && log.endpoint.includes('upload');
+                    default:
+                        return true;
+                }
+            });
+        },
+        
+        get stats() {
+            const uniqueIps = [...new Set(this.logs.map(log => log.ip_address))].length;
+            const errors = this.logs.filter(log => log.status_code >= 400).length;
+            const authEvents = this.logs.filter(log => 
+                log.endpoint && (log.endpoint.includes('auth') || log.action === 'LOGIN' || log.action === 'LOGOUT')
+            ).length;
+            
+            return {
+                total: this.logs.length,
+                unique_ips: uniqueIps,
+                errors: errors,
+                auth_events: authEvents
+            };
+        },
+        
+        setFilter(filter) {
+            this.filter = filter;
+        },
+        
+        formatTime(timestamp) {
+            const date = new Date(timestamp);
+            return date.toLocaleString();
+        },
+        
+        formatLocation(geo) {
+            if (!geo) return 'Unknown';
+            return `${geo.city}, ${geo.country_code}`;
+        },
+        
+        formatAction(log) {
+            if (log.action) return log.action;
+            if (log.endpoint) return `${log.method} ${log.endpoint}`;
+            return 'Unknown';
+        },
+        
+        formatDetails(log) {
+            const details = [];
+            if (log.duration_ms) details.push(`${log.duration_ms}ms`);
+            if (log.user_agent) {
+                const ua = log.user_agent.length > 50 ? log.user_agent.substring(0, 50) + '...' : log.user_agent;
+                details.push(ua);
+            }
+            if (log.details && typeof log.details === 'object') {
+                details.push(JSON.stringify(log.details));
+            }
+            return details.join(' | ');
+        },
+        
+        getActionColor(log) {
+            if (log.action === 'LOGIN') return 'bg-green-100 text-green-800';
+            if (log.action === 'LOGOUT') return 'bg-yellow-100 text-yellow-800';
+            if (log.endpoint && log.endpoint.includes('upload')) return 'bg-purple-100 text-purple-800';
+            return 'bg-gray-100 text-gray-800';
+        },
+        
+        getStatusColor(status) {
+            if (!status) return 'bg-gray-100 text-gray-800';
+            if (status < 300) return 'bg-green-100 text-green-800';
+            if (status < 400) return 'bg-yellow-100 text-yellow-800';
+            return 'bg-red-100 text-red-800';
+        },
+        
+        async refreshLogs() {
+            try {
+                const response = await fetch('/logs/api/recent?limit=500');
+                const data = await response.json();
+                this.logs = data;
+            } catch (error) {
+                console.error('Failed to refresh logs:', error);
+            }
+        },
+        
+        async exportLogs() {
+            window.open('/logs/export', '_blank');
+        },
+        
+        async clearLogs() {
+            if (!confirm('Are you sure you want to clear all logs? This action cannot be undone.')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch('/logs/api/clear', { method: 'POST' });
+                if (response.ok) {
+                    this.logs = [];
+                    alert('Logs cleared successfully');
+                } else {
+                    alert('Failed to clear logs');
+                }
+            } catch (error) {
+                console.error('Failed to clear logs:', error);
+                alert('Failed to clear logs');
+            }
+        },
+        
+        toggleAutoRefresh() {
+            if (this.autoRefresh) {
+                this.refreshInterval = setInterval(() => {
+                    this.refreshLogs();
+                }, 10000); // Refresh every 10 seconds
+            } else {
+                if (this.refreshInterval) {
+                    clearInterval(this.refreshInterval);
+                    this.refreshInterval = null;
+                }
+            }
+        },
+        
+        calculateStats() {
+            // Stats are computed via getter, nothing to do here
+        }
+    }
+}
+</script>
+{% endblock %}

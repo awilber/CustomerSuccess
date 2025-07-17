@@ -1,0 +1,154 @@
+2025-07-16 15:32:48,005 - directory_operations - INFO - log_directory_link_start:59 - Directory link started: {
+  "customer_id": 1,
+  "directory_type": "google_drive",
+  "drive_id": "0AH4z2LPwNUzbUk9PVA",
+  "folder_id": "1Lc9d_n4h1_GjL1RW5YCP_78yQCS83LMD",
+  "folder_name": "Coley-Reed",
+  "path": null,
+  "timestamp": "2025-07-16T15:32:48.005396"
+}
+2025-07-16 15:32:48,008 - directory_operations - ERROR - log_directory_link_error:99 - Directory link failed: {
+  "customer_id": 1,
+  "directory_type": "google_drive",
+  "error": "Drive directory already linked",
+  "details": {
+    "existing_link_id": 1
+  },
+  "timestamp": "2025-07-16T15:32:48.008618"
+}
+2025-07-16 15:44:48,315 - directory_operations - ERROR - log_scan_error:198 - Directory scan failed: {
+  "directory_link_id": 1,
+  "error": "Working outside of application context.\n\nThis typically means that you attempted to use functionality that needed\nthe current application. To solve this, set up an application context\nwith app.app_context(). See the documentation for more information.",
+  "details": {
+    "drive_id": "0AH4z2LPwNUzbUk9PVA",
+    "folder_id": "1Lc9d_n4h1_GjL1RW5YCP_78yQCS83LMD",
+    "customer_id": 1,
+    "test_script": true
+  },
+  "timestamp": "2025-07-16T15:44:48.315382"
+}
+2025-07-16 17:01:32,431 - directory_operations - INFO - log_scan_start:120 - Directory scan started: {
+  "customer_id": 1,
+  "directory_link_id": 1,
+  "scan_type": "google_drive",
+  "scan_details": {
+    "drive_id": "0AH4z2LPwNUzbUk9PVA",
+    "folder_id": "1Lc9d_n4h1_GjL1RW5YCP_78yQCS83LMD",
+    "customer_id": 1
+  },
+  "timestamp": "2025-07-16T17:01:32.431337"
+}
+2025-07-16 17:01:32,433 - directory_operations - ERROR - log_scan_error:198 - Directory scan failed: {
+  "directory_link_id": 1,
+  "error": "Error scanning Drive directory: app",
+  "details": {
+    "drive_id": "0AH4z2LPwNUzbUk9PVA",
+    "folder_id": "1Lc9d_n4h1_GjL1RW5YCP_78yQCS83LMD",
+    "customer_id": 1,
+    "exception": "app"
+  },
+  "timestamp": "2025-07-16T17:01:32.433148"
+}
+2025-07-16 17:03:01,878 - directory_operations - INFO - log_scan_start:120 - Directory scan started: {
+  "customer_id": 1,
+  "directory_link_id": 1,
+  "scan_type": "google_drive",
+  "scan_details": {
+    "drive_id": "0AH4z2LPwNUzbUk9PVA",
+    "folder_id": "1Lc9d_n4h1_GjL1RW5YCP_78yQCS83LMD",
+    "customer_id": 1
+  },
+  "timestamp": "2025-07-16T17:03:01.878373"
+}
+2025-07-16 17:03:01,882 - directory_operations - ERROR - log_scan_error:198 - Directory scan failed: {
+  "directory_link_id": 1,
+  "error": "Error scanning Drive directory: app",
+  "details": {
+    "drive_id": "0AH4z2LPwNUzbUk9PVA",
+    "folder_id": "1Lc9d_n4h1_GjL1RW5YCP_78yQCS83LMD",
+    "customer_id": 1,
+    "exception": "app"
+  },
+  "timestamp": "2025-07-16T17:03:01.882046"
+}
+2025-07-16 17:04:17,361 - directory_operations - INFO - log_directory_link_start:59 - Directory link started: {
+  "customer_id": 1,
+  "directory_type": "google_drive",
+  "drive_id": "0AH4z2LPwNUzbUk9PVA",
+  "folder_id": "1Lc9d_n4h1_GjL1RW5YCP_78yQCS83LMD",
+  "folder_name": "Coley-Reed",
+  "path": null,
+  "timestamp": "2025-07-16T17:04:17.361182"
+}
+2025-07-16 17:04:17,371 - directory_operations - ERROR - log_directory_link_error:99 - Directory link failed: {
+  "customer_id": 1,
+  "directory_type": "google_drive",
+  "error": "Drive directory already linked",
+  "details": {
+    "existing_link_id": 1
+  },
+  "timestamp": "2025-07-16T17:04:17.371101"
+}
+2025-07-16 17:10:15,387 - directory_operations - INFO - log_scan_start:120 - Directory scan started: {
+  "customer_id": 1,
+  "directory_link_id": 1,
+  "scan_type": "google_drive",
+  "scan_details": {
+    "drive_id": "0AH4z2LPwNUzbUk9PVA",
+    "folder_id": "1Lc9d_n4h1_GjL1RW5YCP_78yQCS83LMD",
+    "customer_id": 1
+  },
+  "timestamp": "2025-07-16T17:10:15.387194"
+}
+2025-07-16 17:10:15,395 - directory_operations - DEBUG - log_scan_progress:143 - Scan progress: {"directory_link_id": 1, "files": {"current": 0, "total": 0}, "folders": {"current": 0, "total": 0}, "current_file": null, "current_folder": "Starting scan of Coley-Reed", "timestamp": "2025-07-16T17:10:15.395011"}
+2025-07-16 17:10:15,395 - directory_operations - ERROR - log_authentication_status:218 - Authentication google_drive: {
+  "auth_type": "google_drive",
+  "success": false,
+  "details": {
+    "message": "Drive service not authenticated, attempting auth"
+  },
+  "timestamp": "2025-07-16T17:10:15.395897"
+}
+2025-07-16 17:10:15,402 - directory_operations - INFO - log_authentication_status:218 - Authentication google_drive: {
+  "auth_type": "google_drive",
+  "success": true,
+  "details": {
+    "message": "Authentication completed"
+  },
+  "timestamp": "2025-07-16T17:10:15.402536"
+}
+2025-07-16 17:10:15,402 - directory_operations - DEBUG - log_api_call:233 - API call google_drive.scan_directory: {
+  "api_name": "google_drive",
+  "operation": "scan_directory",
+  "success": true,
+  "response_data": {
+    "message": "Starting directory scan"
+  },
+  "error": null,
+  "timestamp": "2025-07-16T17:10:15.402943"
+}
+2025-07-16 17:10:19,600 - directory_operations - DEBUG - log_api_call:233 - API call google_drive.scan_directory: {
+  "api_name": "google_drive",
+  "operation": "scan_directory",
+  "success": true,
+  "response_data": {
+    "files_found": 44
+  },
+  "error": null,
+  "timestamp": "2025-07-16T17:10:19.599779"
+}
+2025-07-16 17:10:19,601 - directory_operations - DEBUG - log_scan_progress:143 - Scan progress: {"directory_link_id": 1, "files": {"current": 0, "total": 44}, "folders": {"current": 0, "total": 0}, "current_file": "SetupAuditTrail1656877695751.csv", "current_folder": null, "timestamp": "2025-07-16T17:10:19.601785"}
+2025-07-16 17:10:19,642 - directory_operations - DEBUG - log_scan_progress:143 - Scan progress: {"directory_link_id": 1, "files": {"current": 10, "total": 44}, "folders": {"current": 0, "total": 0}, "current_file": "Cumulus_Invoice_Template (Coley-Reed).docx", "current_folder": null, "timestamp": "2025-07-16T17:10:19.642194"}
+2025-07-16 17:10:19,656 - directory_operations - DEBUG - log_scan_progress:143 - Scan progress: {"directory_link_id": 1, "files": {"current": 20, "total": 44}, "folders": {"current": 0, "total": 0}, "current_file": "Add_On_Order_Form_Gmail_Integration_CC_Coley Reed.docx", "current_folder": null, "timestamp": "2025-07-16T17:10:19.656922"}
+2025-07-16 17:10:19,671 - directory_operations - DEBUG - log_scan_progress:143 - Scan progress: {"directory_link_id": 1, "files": {"current": 30, "total": 44}, "folders": {"current": 0, "total": 0}, "current_file": "Foreclosure Listing File Cover.xls", "current_folder": null, "timestamp": "2025-07-16T17:10:19.671146"}
+2025-07-16 17:10:19,685 - directory_operations - DEBUG - log_scan_progress:143 - Scan progress: {"directory_link_id": 1, "files": {"current": 40, "total": 44}, "folders": {"current": 0, "total": 0}, "current_file": "MasterMailingList (version 1).xls", "current_folder": null, "timestamp": "2025-07-16T17:10:19.685177"}
+2025-07-16 17:10:19,694 - directory_operations - INFO - log_scan_completion:173 - Directory scan completed: {
+  "directory_link_id": 1,
+  "results": {
+    "files_processed": 44,
+    "total_size_bytes": 9688097,
+    "folders_processed": 0,
+    "scan_duration": "completed"
+  },
+  "timestamp": "2025-07-16T17:10:19.694256"
+}

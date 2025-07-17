@@ -1,0 +1,36 @@
+{
+  "scan_1": {
+    "status": "completed",
+    "results": {
+      "files_processed": 44,
+      "total_size_bytes": 9688097,
+      "folders_processed": 0,
+      "scan_duration": "completed"
+    },
+    "progress": {
+      "current": 44,
+      "total": 44,
+      "message": "Scan completed: 44 files, 0 folders processed"
+    },
+    "last_updated": "2025-07-16T17:10:19.694473"
+  },
+  "customer_1": {
+    "status": "error",
+    "error": "Drive directory already linked",
+    "details": {
+      "customer_id": 1,
+      "directory_type": "google_drive",
+      "error": "Drive directory already linked",
+      "details": {
+        "existing_link_id": 1
+      },
+      "timestamp": "2025-07-16T17:04:17.371101"
+    },
+    "progress": {
+      "current": 0,
+      "total": 0,
+      "message": "Error: Drive directory already linked"
+    },
+    "last_updated": "2025-07-16T17:04:17.371359"
+  }
+}

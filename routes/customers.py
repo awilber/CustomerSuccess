@@ -1,5 +1,5 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash
-from models import db, Customer, Person, EmailThread, FileReference
+from models import db, Customer, Person, EmailThread, FileReference, DirectoryLink
 from sqlalchemy import func
 
 bp = Blueprint('customers', __name__, url_prefix='/customers')
@@ -25,12 +25,16 @@ def detail(id):
     # Get file references
     files = customer.file_references.order_by(FileReference.last_modified.desc()).limit(10).all()
     
+    # Get directories
+    directories = customer.directory_links
+    
     return render_template('customers/detail.html', 
                          customer=customer,
                          email_count=email_count,
                          recent_emails=recent_emails,
                          people=people,
-                         files=files)
+                         files=files,
+                         directories=directories)
 
 @bp.route('/<int:id>/timeline')
 def timeline(id):
